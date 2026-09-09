@@ -1,6 +1,6 @@
-# CJH Skript Snippets
+# Skript Snippets
 
-A collection of Skript scripts by CJH (and friends). These used to be sold on my Discord server and are now free for everyone. Join [CJH's support Discord](https://discord.gg/5Dr4XR5Znj) for help.
+A collection of Skript scripts by CJH (and a few other people). Join [CJH's support Discord](https://discord.gg/5Dr4XR5Znj) for help.
 
 **Free to use, not free to resell or redistribute.** See [LICENSE.md](LICENSE.md).
 
