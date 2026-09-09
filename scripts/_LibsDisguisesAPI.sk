@@ -1,0 +1,122 @@
+###
+# LibsDisguises API
+#
+# Functions to interact with the LibsDisguises API for disguising entities.
+#
+# Usage:
+# `set {_disguiseName} to getDisguise(player)`          - Get the main disguise name of a player
+# `set {_allDisguises::*} to getAllDisguises(player)`   - Get all disguise names of a player
+# `if isDisguised(player) is true:`                     - Check if a player is disguised
+# `disguiseEntity(player, "CustomDisguiseName")`        - Disguise a player with a custom disguise
+# `disguiseEntity(player, nearest zombie)`              - Disguise a player as the nearest zombie
+# `disguiseEntity(player, a zombie)`                    - Disguise a player as a zombie
+# `disguiseEntity(player, offlineplayer("Notch"))`      - Disguise a player as Notch
+# `undisguise(player)`                                  - Undisguise a player
+#
+# Tested on (20/11/2025):
+# - Paper 1.21.10-82-1e67ca8 (MC: 1.21.10)
+# - LibsDisguises 10.0.29
+# - Skript 2.13.0
+# - skript-reflect 2.6.1
+#
+# Requires:
+# - Skript
+# - skript-reflect
+# - LibsDisguises
+#
+# author: wrexbg (https://discord.gg/5Dr4XR5Znj)
+# version: 1.0
+# license: Noncommercial (Do NOT resell or distribute this without permission)
+###
+
+import:
+    me.libraryaddict.disguise.DisguiseAPI
+    me.libraryaddict.disguise.disguisetypes.MobDisguise
+    me.libraryaddict.disguise.disguisetypes.DisguiseType
+    me.libraryaddict.disguise.disguisetypes.PlayerDisguise
+    ch.njol.skript.bukkitutil.EntityUtils
+
+# <summary>
+# Get the main disguise name of an entity
+# </summary>
+# <param name="entity">The entity to get the disguise of</param>
+# <returns>The disguise name for the entity</returns>
+function getDisguise(entity: entity) :: string:
+    return DisguiseAPI.getDisguise({_entity}).getDisguiseName()
+
+# <summary>
+# Get all disguise names of an entity
+# </summary>
+# <param name="entity">The entity to get the disguises of</param>
+# <returns>A list of all disguise names for the entity</returns>
+function getAllDisguises(entity: entity) :: strings:
+    return (...DisguiseAPI.getDisguises({_entity})) mapped with [input.getDisguiseName()]
+
+# <summary>
+# Check if an entity is disguised
+# </summary>
+# <param name="entity">The entity to check</param>
+# <returns>Whether the entity is disguised</returns>
+function isDisguised(entity: entity) :: boolean:
+    return DisguiseAPI.isDisguised({_entity})
+
+# <summary>
+# Disguise an entity with a disguise name or source entity
+# </summary>
+# <param name="entity">The entity to disguise</param>
+# <param name="disguiseSource">The disguise name or source entity to use for the disguise</param>
+# <param name="recipients">The players to disguise the entity to (optional; default is all players)</param>
+function disguiseEntity(entity: entity, disguiseSource: object, recipients: players = {_null}):
+    {_disguiseSource} is set
+
+    if {_disguiseSource} is a string:
+        disguiseCustom({_entity}, {_disguiseSource}, {_recipients::*})
+    else if {_disguiseSource} is an offlineplayer:
+        disguisePlayer({_entity}, {_disguiseSource}, {_recipients::*})
+    else if {_disguiseSource} is an entity type:
+        disguiseEntityType({_entity}, {_disguiseSource}, {_recipients::*})
+    else if {_disguiseSource} is an entity:
+        disguiseEntity({_entity}, {_disguiseSource}, {_recipients::*})
+
+# <summary>
+# Undisguise an entity
+# </summary>
+# <param name="entity">The entity to undisguise</param>
+function undisguise(entity: entity):
+    DisguiseAPI.undisguiseToAll({_entity})
+
+# local helper function to handle disguising with custom disguise name
+local function disguiseCustom(entity: entity, disguiseName: string, recipients: players = {_null}):
+    set {_disguise} to DisguiseAPI.getCustomDisguise({_disguiseName})
+    {_disguise} is set
+
+    disguise({_entity}, {_disguise}, {_recipients::*})
+
+# local helper function to handle disguising with source entity
+local function disguiseEntity(entity: entity, disguiseSource: entity, recipients: players = {_null}):
+    set {_disguise} to DisguiseAPI.constructDisguise({_disguiseSource})
+    {_disguise} is set
+
+    disguise({_entity}, {_disguise}, {_recipients::*})
+
+# local helper function to handle disguising with entity type
+local function disguiseEntityType(entity: entity, entityType: entity type, recipients: players = {_null}):
+    set {_type} to EntityUtils.toBukkitEntityType({_entityType})
+    set {_disguise} to new MobDisguise(DisguiseType.getType({_type}))
+    {_disguise} is set
+
+    disguise({_entity}, {_disguise}, {_recipients::*})
+
+# local helper function to handle disguising with player disguise
+local function disguisePlayer(entity: entity, player: offlineplayer, recipients: players = {_null}):
+    set {_disguise} to new PlayerDisguise({_player}.getName())
+    {_disguise} is set
+
+    disguise({_entity}, {_disguise}, {_recipients::*})
+
+# local helper function to handle disguising with optional recipients
+local function disguise(entity: entity, disguise: javaobject, recipients: players = {_null}):
+    if {_recipients::*} is not set:
+        DisguiseAPI.disguiseToAll({_entity}, {_disguise})
+    else:
+        DisguiseAPI.disguiseToPlayers({_entity}, {_disguise}, {_recipients::*})

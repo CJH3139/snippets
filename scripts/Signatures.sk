@@ -1,0 +1,82 @@
+###
+# Signatures
+#
+# Lets players set a personal signature and permanently sign the item in their hand.
+#
+# Requires:
+# - Skript
+# - SkBee
+# - CJHUtils.sk
+#
+# author: CJH (https://discord.gg/5Dr4XR5Znj)
+# version: 1.0
+# license: Noncommercial (Do NOT resell or distribute this without permission)
+###
+
+local function signatureSet(p: player, text: text):
+    set {signature::%{_p}%} to {_text}
+    send "%{-constants::prefix}% &7Signature set to: %{_text}%" to {_p}
+    play sound "block.note_block.pling" at volume 1 and pitch 2 to {_p}
+
+local function applySignature(p: player):
+    set {_item} to tool of {_p}
+    set {_signers::*} to string list tag "Signatures" of custom nbt of {_item}
+    if any:
+        checkError({_p}, whether {signature::%{_p}%} is not set, "No signature found. Use /signature set <text>") is true
+        checkError({_p}, whether {_item} is air, "You're not holding an item.") is true
+        checkError({_p}, whether {_signers::*} contains "%{_p}%", "You have already signed this item.") is true
+    then:
+        stop
+    add "%{_p}%" to {_signers::*}
+    set string list tag "Signatures" of custom nbt of {_item} to {_signers::*}
+    set {_lore::*} to lore of {_item}
+    if last element out of {_lore::*} does not contain "Signed By:":
+        add "" to {_lore::*}
+
+    add formatted "&6✍ &7Signed By: &f%{signature::%{_p}%}%" to {_lore::*}
+    set lore of {_item} to {_lore::*}
+    set tool of {_p} to {_item}
+
+    send "%{-constants::prefix}% &aItem signed successfully!" to {_p}
+    play sound "block.anvil.use" at volume 0.8 and pitch 1.2 to {_p}
+
+local function sendSignWarning(p: player):
+    send formatted "%nl%&4&l⚠ &c&lWARNING &4&l⚠" to {_p}
+    send formatted "&cSigning this item is &c&lPERMANENT and IRREVERSIBLE." to {_p}
+    send formatted "&fThe item will be &c&lfinalized&f — it &c&lcannot be used" to {_p}
+    send formatted "&cas an upgrade material &cever again.%nl%" to {_p}
+    send formatted "&e&l⚠ Please make sure the item owner has confirmed" to {_p}
+    send formatted "&e&lthey do NOT plan to use this item for upgrades!%nl%" to {_p}
+    send formatted "&7Run &f/signature sign &7again within &e15 seconds &7to confirm.%nl%" to {_p}
+
+command /signature [<type:text = {_}>] [<signature:text>]:
+    aliases: /sig
+    permission: colorss.signature
+    trigger:
+        if {_type} is "sign":
+            if any:
+                checkError(player, whether {signature::%player%} is not set, "Set your signature first: /signature set <text>") is true
+                checkError(player, whether tool of player is air, "Hold an item in your main hand to sign it.") is true
+            then:
+                stop
+            if metadata "signaturePending" of player is set:
+                delete metadata "signaturePending" of player
+                applySignature(player)
+                stop
+            set metadata "signaturePending" of player to true
+            sendSignWarning(player)
+            wait 15 seconds
+            if metadata "signaturePending" of player is true:
+                delete metadata "signaturePending" of player
+                send "%{-constants::prefix}% &7Signing confirmation expired." to player
+            stop
+        else if {_type} is "set":
+            if {_signature} is not set:
+                send "%{-constants::prefix}% &cProvide text: &f/signature set <text>" to player
+                stop
+            signatureSet(player, colored {_signature})
+            stop
+
+        send "%{-constants::prefix}% &7Signature Commands:" to player
+        send "  &f/signature set <text> &8- &7Set your signature" to player
+        send "  &f/signature sign &8- &7Sign the item in your hand" to player

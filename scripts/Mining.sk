@@ -1,0 +1,93 @@
+###
+# Custom Mining
+#
+# Requires:
+# - Skript
+# - SkBee
+# - skript-reflect (for getEntityID())
+# - oopsk
+#
+# author: CJH (https://discord.gg/5Dr4XR5Znj)
+# version: 1.0
+# license: Noncommercial (Do NOT resell or distribute this without permission)
+###
+
+struct Ore:
+    id: integer
+    material: blockdata
+    maxhp: integer
+    drop: itemtype
+    regenTicks: number
+
+on load:
+    delete {-oreData::*}
+    delete {-ore::materials::*}
+    registerOre(coal ore,  100, coal,     30)
+    registerOre(iron ore,  200, raw iron, 45)
+    registerOre(gold ore,  500, raw gold, 60)
+
+local function registerOre(material: blockdata, maxhp: integer, drop: itemtype, regenTicks: number):
+    set {_id} to size of {-oreData::*} + 1
+    set {-oreData::%{_id}%} to Ore struct instance:
+        id: {_id}
+        material: {_material}
+        maxhp: {_maxhp}
+        drop: {_drop}
+        regenTicks: {_regenTicks}
+    add {_material} to {-ore::materials::*}
+
+local function getOreByMaterial(block: block) :: struct:
+    loop {-oreData::*}:
+        blockdata of {_block} is loop-value->material
+        return loop-value
+
+command /registermine:
+    trigger:
+        if metadata "buildMode" of player is set:
+            delete metadata "buildMode" of player
+            send "&aExited build mode." to player
+        else:
+            set metadata "buildMode" of player to true
+            send "&eBuild mode enabled." to player
+
+on place:
+    metadata "buildMode" of player is set
+    blockdata of event-block is any of {-ore::materials::*}
+    set {mineBlock::%location of event-block%} to type of event-block
+    send "&aRegistered &f%event-block% &aat &7%location of event-block%." to player
+
+on arm swing:
+    set {_b} to player's target block
+    set {_loc} to location of {_b}
+    {mineBlock::%{_loc}%} is set
+    {-oreRegen::%{_loc}%} is not set
+    set {_ore} to getOreByMaterial({_b})
+    if int tag "hp" of custom nbt of {_b} is not set:
+        set int tag "hp" of custom nbt of {_b} to {_ore}->maxhp
+        metadata "buildMode" of player is set
+        stop
+    set {_hp} to (int tag "hp" of custom nbt of {_b}) - 1
+    set int tag "hp" of custom nbt of {_b} to {_hp}
+
+    set {_i} to player.getEntityId() + 1
+    make player see damage of {_b} as (({_ore}->maxhp - {_hp}) / {_ore}->maxhp) by {_i}
+    send action bar "&c%{_hp}% &8/ &7%{_ore}->maxhp% &cHP" to player
+
+    if {_hp} <= 0:
+        set {_regen} to {_ore}->regenTicks
+        delete custom nbt of {_b}
+        give player 1 of {_ore}->drop
+        make player see damage of {_b} as 0
+        set blockdata of block at {_loc} to bedrock
+        set {-oreRegen::%{_loc}%} to true
+        wait {_regen}*1 ticks
+        delete {-oreRegen::%{_loc}%}
+        set blockdata of block at {_loc} to {_ore}->material
+
+# Must have default mining speed of a tool to 0 (or make the block unbreakable with a pickaxe) to work fully as intended
+command /testpick:
+    trigger:
+        set {_i} to wooden pickaxe
+        apply tool component to {_i}:
+            default_mining_speed: 0
+        give {_i} to player

@@ -1,0 +1,144 @@
+###
+# CJH Utils
+#
+# A collection of commonly used utility functions and helpers used across my scripts.
+# This file is required for many of my scripts and helps standardize features
+# and reduce duplicate code. Make sure this file is installed and loaded before using any dependent scripts.
+#
+# Requires:
+# - Skript
+# - SkBee
+# - skript-reflect
+#
+# author: CJH (https://discord.gg/5Dr4XR5Znj)
+# version: 1.0
+# license: Noncommercial (Do NOT resell or distribute this without permission)
+###
+
+import:
+    com.shanebeestudios.skbee.api.wrapper.ComponentWrapper
+
+item property effectivename:
+    get:
+        return ComponentWrapper.fromComponent(expr-1.effectiveName())
+
+on load:
+    # Change this to your server prefix
+    set {-constants::prefix} to "&6&lCJH &r|"
+
+
+# <summary>
+# Get the skull of a player
+# </summary>
+# <param name="player">Either the player, their name or the texture signature of the skin.</param>
+# <returns>The skull of the player with model data so it renders</returns>
+function getSkull(player: object) :: item:
+    if {_player} is a text:
+        # Handle signature
+        if length of {_player} > 36:
+            set {_skull} to a player head with nbt from nbt from "{""minecraft:profile"":{id:[I;1012646827,1820739582,-1120930980,-1600539797],name:"""",properties:[{name:""textures"",value:""%{_player}%""}]}}"
+            return {_skull}
+
+        set {_player} to offlineplayer({_player}, false)
+
+    {_player} is an offline player
+    set {_skull} to {_player}'s skull
+    return {_skull}
+
+# Converts regular text to "ᴛɪɴʏ ᴛᴇxᴛ"
+#! Setup variables for tiny text !#
+on load:
+    set {-tiny::*} to "ᴀʙᴄᴅᴇғɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢ" split at ""
+    set {_lower} to "abcdefghijklmnopqrstuvwxyz"
+    set {-lower::*} to {_lower} split at ""
+    set {-upper::*} to (uppercase {_lower}) split at ""
+
+# <summary>
+# Function to make tiny text
+# </summary>
+# <param name="text">The text to convert to tiny text</param>
+# <returns>The text converted to tiny text</returns>
+function smallFont(text: text) :: text:
+    loop {-tiny::*}:
+        replace {-lower::%loop-index%} and {-upper::%loop-index%} with loop-value in {_text}
+        # puts back color codes
+        replace "§%loop-value%" with "§%{-lower::%loop-index%}%" in {_text}
+    return {_text}
+
+# <summary>
+# Convert a number to a Roman numeral
+# </summary>
+# <param name="num">The number to convert</param>
+# <returns>The Roman numeral representation of the number</returns>
+function romanNumeral(num: int) :: string:
+    set {_values::*} to 1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, and 1
+    set {_romanLetters::*} to "M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", and "I"
+    set {_roman} to ""
+    loop {_num}+13 times:
+        while {_num} >= {_values::%loop-value%}:
+            subtract {_values::%loop-value%} from {_num}
+            set {_roman} to "%{_roman}%%{_romanLetters::%loop-value%}%"
+        {_num} = 0:
+            exit loop
+    return {_roman}
+
+# Global error message
+function error(p: player, message: text):
+    send formatted " &4Error: &c%{_message}%" to {_p}
+
+function info(p: player, message: text):
+    send formatted "&f&k|| &7%{_message}%" to {_p}
+
+# <summary>
+# Checks for an error condition and sends an error message to the player if the condition is true.
+# </summary>
+# <param name="player">The player to send the error message to</param>
+# <param name="condition">The condition result</param>
+# <param name="error">The error message to send</param>
+# <returns>True if the condition is true, false otherwise</returns>
+# <example>
+#   checkError(player, whether player's balance > {_price}, "You don't have enough money!")
+# </example>
+function checkError(player: player, condition: boolean, error: string) :: boolean:
+    if {_condition} is true:
+        send "&c" + {_error} to {_player}
+    return {_condition}
+
+# Replaces an item with a barrier temporarily with an error message
+function errorItem(p: player, slot: integer, item: item, message: text, sound: boolean = true):
+    (metadata "item-animation-%{_slot}%" of {_p}) isn't set
+    set (metadata "item-animation-%{_slot}%" of {_p}) to true
+    set {_gui} to gui of {_p}
+
+    play sound "block.note_block.bass" to {_p} if {_sound} = true
+    set slot {_slot} of {_p}'s current inventory to barrier named " " with lore " &4✘ &c%{_message}% |" split at "|"
+    wait 1.5 seconds
+
+    (metadata "item-animation-%{_slot}%" of {_p}) = true
+    delete (metadata "item-animation-%{_slot}%" of {_p})
+
+    gui of {_p} = {_gui}
+    set slot {_slot} of {_p}'s current inventory to {_item}
+
+function formatTimespan(time: timespan) :: string:
+    set {_time} to "%{_time}%"
+    replace " and " with ", " in {_time}
+    replace " days" and " day" with "d" in {_time}
+    replace " hours" and " hour" with "h" in {_time}
+    replace " minutes" and " minute" with "m" in {_time}
+    replace " seconds" and " second" with "s" in {_time}
+    replace " weeks" and " week" with "w" in {_time}
+    replace " months" and " month" with "mo" in {_time}
+    replace " years" and " year" with "y" in {_time}
+    set {_time} to {_time}.replaceAll("\.\d+", "")
+
+    return {_time}
+
+function unformatTimespan(time: string) :: timespan:
+    replace all "m" in {_time} with " minute "
+    replace all "y" in {_time} with " year "
+    replace all "w" in {_time} with " week "
+    replace all "d" in {_time} with " day "
+    replace all "h" in {_time} with " hour "
+    replace all "s" in {_time} with " second "
+    return {_time} parsed as timespan

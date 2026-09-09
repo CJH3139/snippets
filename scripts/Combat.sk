@@ -1,0 +1,116 @@
+###
+# Combat Skript
+#
+# Combat tagging with a /pvp toggle, spawn protection for new and respawning players,
+# and punishment for logging out while in combat.
+#
+# Requires:
+# - Skript
+# - SkBee
+#
+# author: CJH (https://discord.gg/5Dr4XR5Znj)
+# version: 1.0
+# license: Noncommercial (Do NOT resell or distribute this without permission)
+###
+
+on load:
+    # Change this to your server prefix
+    set {-constants::prefix} to "&6&lCJH &r|"
+
+on damage of a player by player:
+    attacker is not victim
+    if metadata "pvp;disabled" of attacker is set:
+        send action bar "<#ff0000>You currently have pvp disabled, you can enable it using &f/pvp" to attacker
+        cancel event
+
+    if metadata "pvp;disabled" of victim is set:
+        send action bar "<#ff0000>This player has pvp disabled" to attacker
+        cancel event
+    else if now < metadata "pvp;protection" of victim:
+        send action bar "<#ff0000>This player has spawn protection" to attacker
+        cancel event
+
+    if the event is cancelled:
+        stop
+
+    if metadata "pvp;protection" of attacker is set:
+        clear metadata "pvp;protection" of attacker
+
+    combatTimer(victim)
+    combatTimer(attacker)
+
+on join:
+    if player has not played before:
+        set metadata "pvp;protection" of player to 1 hour later
+    else:
+        set metadata "pvp;protection" of player to 30 seconds later
+
+on death of player:
+    attacker is a player
+    delete metadata "pvp;timer" of attacker
+    send action bar "&aYou are out of combat" to attacker
+
+on respawn:
+    delete metadata "pvp;timer" of player
+    set metadata "pvp;protection" of player to 30 seconds later
+
+on quit:
+    if metadata "pvp;timer" of player is set:
+        kill player
+        broadcast "&c&l%player%&c logged  out while in combat."
+
+on elytra boost:
+    metadata "pvp;timer" of player is set
+    cancel event
+
+on toggle gliding:
+    if all:
+        player is not gliding
+        metadata "pvp;timer" of player is set
+    then:
+        cancel event
+        set gliding state of player to true
+        set gliding state of player to false
+
+local function combatTimer(player: player):
+    if metadata "pvp;timer" of {_player} is set:
+        set metadata "pvp;timer" of {_player} to 10 seconds later
+        stop
+    set metadata "pvp;timer" of {_player} to 10 seconds later
+    while now < metadata "pvp;timer" of {_player}:
+        if {_player} is not connected:
+            stop
+        send action bar "&cYou are in combat for %time until metadata "pvp;timer" of {_player}% seconds" to {_player}
+        if {_player} is flying:
+            {_player}'s gamemode is survival
+            set flight mode of {_player} to false
+        if {_player} is gliding:
+            set the gliding state of {_player} to false
+        wait 2 ticks
+    send action bar "&aYou are out of combat" to {_player}
+    clear metadata "pvp;timer" of {_player}
+
+command /pvp:
+    aliases: pvptoggle
+    cooldown: 30 seconds
+    cooldown message: %{-constants::prefix}% You may only toggle pvp again in &b%remaining%&r.
+    executable by: players
+    trigger:
+        if metadata "pvp;timer" of player is set:
+            send component merge components {-constants::prefix} and ("<#ff0000>You can not toggle pvp while in combat.") with " " to player
+            cancel cooldown
+            stop
+        if metadata "pvp;disabled" of player is set:
+            clear metadata "pvp;disabled" of player
+            send component merge components {-constants::prefix} and ("You've <lime>enabled<reset> pvp.") with " "
+
+        else:
+            set metadata "pvp;disabled" of player to true
+            cancel cooldown
+            send component merge components {-constants::prefix} and ("You've <light red>disabled<reset> pvp.") with " "
+
+on command:
+    metadata "pvp;timer" of player is set
+    player doesn't have permission "op"
+    cancel event
+    send "&cYou cannot enter commands during combat!"

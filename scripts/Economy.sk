@@ -1,0 +1,108 @@
+###
+# Economy Skript
+#
+# Features:
+# Check your balance - See how much money you currently have (/ss bal, /ss balance, /ss money)
+# Pay another player - Send money directly to another player (/ss pay <player> <amount>)
+# Withdraw money - Turn your balance into a physical bank note item you can trade or store (/ss withdraw <amount>)
+# Redeem bank notes - Right-click a bank note to add its value to your balance
+# Bulk redeem notes - Shift + right-click to redeem all notes in a stack at once
+# Secure notes - Bank notes are safe and store their value internally (can’t be renamed to fake value)
+# ADMIN set money - Forcefully sets another player's money (/ss set <player> <amount>)
+# ADMIN reset money - Forcefully resets another player's money (/ss reset <player>)
+#
+# Requires:
+# - Skript
+# - SkBee
+# - skript-reflect (for money player property)
+# - CJHUtils.sk
+#
+# author: CJH (https://discord.gg/5Dr4XR5Znj)
+# version: 1.0
+# license: Noncommercial (Do NOT resell or distribute this without permission)
+###
+
+player property money:
+    get:
+        return {playerData::%expr-1%::money}
+    set:
+        set {playerData::%expr-1%::money} to change value
+    add:
+        add change value to {playerData::%expr-1%::money}
+    remove:
+        remove change value from {playerData::%expr-1%::money}
+
+function createNote(amount: integer, player: player, admin: boolean = false) :: item:
+    set {_i} to paper with glint named "<#51ff00>$%{_amount}% &fBank Note" with lore "", "&f&nRight-Click to redeem"
+    set int tag "balance" of custom nbt of {_i} to {_amount}
+    if {_admin} is false:
+        remove {_amount} from money of {_player}
+    return {_i} with all item flags
+
+local function redeemNote(player: player, amount: integer = 1):
+    set {_i} to {_player}'s held item
+    set {_money} to (int tag "balance" of custom nbt of {_i})
+    remove {_amount} of {_i} from {_player}'s inventory
+    add {_moneyAmount} to money of {_player}
+    send "&fYou redeemed <##51ff00>$ &f%{_amount} * {_money}%&a Coins" to {_player}
+    play sound "item.armor.equip_generic" to {_player}
+    play sound "entity.experience_orb.pickup" to {_player}
+
+command /cjh <type:string> [<player:player = %sender%>] [<amount:integer>]:
+    aliases: ss
+    trigger:
+        if {_type} is "bal", "balance" or "money":
+            send "&aYou have $%formatNumber(money of {_player} ? 0)%" to player
+        else if {_type} is "pay":
+            if any:
+                checkError(player, whether {_amount} <= 0, "<##FF1212>✕ Amount must me more than <##D1D0D1>$0") is true
+                checkError(player, whether money of player < {_amount}, "<##FF1212>✕ You don't have enough money") is true
+                checkError(player, whether player is {_player}, "<##FF1212>✕ You can't send money to yourself") is true
+                checkError(player, whether {_amount} is not set, "<##FF1212>✕ Specify the price") is true
+            then:
+                play sound "block.note_block.bass" to player
+                stop
+            remove {_amount} from money of player
+            add {_amount} to money of {_player}
+            play sound "entity.experience_orb.pickup" with volume 0.5 to player and {_player}
+            send "&aYou sent %{_amount}% to %{_player}%" to player
+            send "&aYou received %{_amount}% from %player%" to {_player}
+        else if {_type} is "withdraw":
+            if any:
+                checkError(player, whether {_amount} <= 0, "<##FF1212>✕ Amount must me more than <##D1D0D1>$0") is true
+                checkError(player, whether {_amount} >= 1000000000, "<##FF1212>✕ Amount must me less than <##D1D0D1>$1,000,000,000") is true
+                checkError(player, whether money of player < {_amount}, "<##FF1212>✕ You don't have enough money") is true
+            then:
+                play sound "block.note_block.bass" to player
+                stop
+            give 1 of createNote({_amount}, player) to player
+        else if {_type} is "set":
+            if any:
+                checkError(player, whether player is not op, "<##FF1212>✕ Access denied") is true
+                checkError(player, whether {_player} is not set, "<##FF1212>✕ Specify a player") is true
+                checkError(player, whether {_amount} is not set, "<##FF1212>✕ Specify an amount") is true
+            then:
+                play sound "block.note_block.bass" to player
+                stop
+            set money of {_player} to {_amount}
+            send "&cAn admin has set your money to %{_amount}%" to {_player}
+            send "You set %{_player}%'s money to %{_amount}%" to player
+        else if {_type} is "reset":
+            player is op
+            set money of {_player} to 0
+            send "&cAn Admin has reset your money" to {_player}
+            send "Resetted %{_player}%'s money" to player
+
+on right click using paper:
+    set {_i} to player's held item
+    int tag "balance" of custom nbt of {_i} is set
+    if player is sneaking:
+        redeemNote(player, amount of {_i} in player's inventory)
+    else:
+        redeemNote(player)
+
+on tab complete of "/cjh" or "/ss":
+    set tab completions for position 1 to "bal", "balance", "money", "pay" and "withdraw"
+    if player is op:
+        add "reset" and "set" to tab completions for position 1
+    set tab completions for position 2 to all players where [input is not player]

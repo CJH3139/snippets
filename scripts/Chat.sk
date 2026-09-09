@@ -1,0 +1,66 @@
+###
+# Chat Skript
+#
+# Chat utility functions and formatting for mentions, replies, hex colors, and item display in chat.
+# Includes support for clickable reply messages, player mentions, and [item] placeholders with hoverable previews.
+#
+# Requires:
+# - Skript
+# - SkBee
+# - skript-reflect
+# - CJHUtils.sk
+#
+# author: CJH (https://discord.gg/5Dr4XR5Znj)
+# version: 1.0
+# license: Noncommercial (Do NOT resell or distribute this without permission)
+###
+
+options:
+    regex:
+        item: (?i)\[(i|item|hand|tool)\]
+
+function getRandomCode() :: string:
+    return "%random integer between 0 and 999999%"
+
+function colorFormat(text: text) :: text:
+    return formatted {_text}.replaceAll("&#([a-fA-F0-9]{6})", "<#$1>")
+
+function replaceableItem(item: item, player: player) :: text component:
+    if {_item} is air:
+        return text component from "&7[&fAir&7]&r"
+    set {_item::amount} to amount of {_item} in {_player}
+    if {_item::amount} > 1:
+        set {_itemAmount} to text component from " %last string color code of effectivename of {_item}%&fx%{_item::amount}%"
+    set {_component} to merge components "&7[&f", effectivename of {_item}, {_itemAmount}, "&7]&r"
+    add a new hover event showing 1 of {_item} to {_component}
+    return {_component}
+
+on async chat:
+    set {_message} to async chat message
+    loop players:
+        {_message} partially matches "(?i)@?(%name of loop-player%|%display name of loop-player%)\b"
+        set {_mention} to text component from "&e@%(display name of loop-player)%&r"
+        component regex replace "(?i)@?(%name of loop-player%|%display name of loop-player%)\b" with {_mention} in {_message}
+        play sound "entity.experience_orb.pickup" for loop-player
+    set color format of {_message} to first string color of formatted "<%{playerData::%player%::chatcolor} ? "#AAAAAA"%>"
+    set {_code} to getRandomCode()
+    set {-message::%{_code}%::message} to {_message}
+    set {-message::%{_code}%::owner} to player
+    set {_format::2} to text component from prefix of player
+    set {_format::3} to text component from display name of player
+    set {_format::4} to text component from " &7» "
+    if first 14 characters of unformatted {_message} is "(Replying to #":
+        set {_id::*} to "%uncolored {_message}%" parsed as "\(Replying to #%integer%\)%string%"
+        set {_message} to text component from {_id::2}
+        {-message::%{_id::1}%::message} is set
+        set {_format::1} to text component from "&f➦ &7Replying to &e@%{-message::%{_id::1}%::owner}%&7: %first 7 characters of {-message::%{_id::1}%::message}%...%nl%"
+        send action bar "&a%player% replied to you" to {-message::%{_id::1}%::owner}
+    set {_format::5} to {_message}
+    add a new hover event showing text component from "&fClick to reply to this message!" to {_format::5}
+    add click event to suggest command "(Replying to #%{_code}%) " to {_format::5}
+
+    component regex replace "{@regex.item}" with replaceableItem(player's tool, player) in {_format::5}
+
+    set async chat format to (merge components {_format::*})
+    run 30 seconds later:
+        delete {-message::%{_code}%}

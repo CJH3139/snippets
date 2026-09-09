@@ -1,0 +1,96 @@
+###
+# Chuck Norris Jokes
+#
+# Pulls a random Chuck Norris joke from api.chucknorris.io when a player clicks a [Chuck Norris] sign.
+#
+# Requires:
+# - Skript
+# - skript-reflect
+#
+# author: Fusezion (https://discord.gg/5Dr4XR5Znj)
+# version: 1.0
+# license: Noncommercial (Do NOT resell or distribute this without permission)
+###
+
+import:
+    java.net.http.HttpClient
+    java.net.http.HttpRequest
+    java.net.http.HttpResponse
+    java.net.URI
+    com.google.gson.JsonObject
+    com.google.gson.JsonParser
+
+#------------------------------------------------------------#
+#                  Simple Changeable Options                 #
+#------------------------------------------------------------#
+options:
+    # All Categories:
+    # Listed at: https://api.chucknorris.io/jokes/categories
+    # "explicit", "political", "religion", "dev", "science", "fashion", "history", "travel", "movie"
+    # "animal", "career", "celebrity", "food", "money", "music", "sport"
+    allowed-categories: "animal", "career", "celebrity", "food", "money", "music", "sport", "science", "fashion", "history", "travel", "movie"
+
+    # Its encouraged to limit the rate of being spamming this api
+    # you never know if you'll get rate limited or blocked
+    cooldown: 3 seconds
+
+    sign-replacement-text: <##36ffe1>[Chuck Norris]
+    sign-text: [Chuck Norris]
+
+    # Internals:
+    api-url: https://api.chucknorris.io/jokes/random?category=%{_category}%
+
+
+#------------------------------------------------------------#
+#    Front Facing Code (Touch but be careful I won't fix)    #
+#------------------------------------------------------------#
+
+# Format the sign how you want
+# I use this for easy player access
+on sign change:
+    line 1 is "{@sign-text}"
+    set line 1 to "{@sign-replacement-text}"
+    set line 2 to "Click for a Joke"
+    set line 3 and line 4 to ""
+
+local function formatMessage(joke: string) :: strings:
+    set {_lines::1} to "&8&m%" " repeated 65 times%"
+    set {_lines::2} to "&e&lChuck Norris Joke"
+    set {_lines::3} to ""
+    set {_lines::4} to {_joke}
+    set {_lines::5} to ""
+    set {_lines::6} to "&8&m%" " repeated 65 times%"
+    return {_lines::*}
+
+# Try not to change anything here unless you know what you're doing
+on right click on oak wall sign:
+    line 1 of event-block is coloured "{@sign-replacement-text}"
+    if all:
+        {-chucknorris::cooldowns::%player%} is set
+        now < {-chucknorris::cooldowns::%player%}
+    then:
+        send "&c&lHey!&7 Please try not to spam this. It uses a public api and we don't want ratelimited or blocked" to player
+        stop
+    set {-chucknorris::cooldowns::%player%} to {@cooldown} later
+    makeApiRequest(player)
+
+
+#------------------------------------------------------------#
+#   Internal Code Section (DO NOT TOUCH WITHOUT KNOWLEDGE)   #
+#------------------------------------------------------------#
+
+on load:
+    set {-chucknorris::httpclient} to HttpClient.newHttpClient()
+    set {-chucknorris::allowed-categories::*} to {@allowed-categories}
+    delete {-chucknorris::cooldowns::*}
+
+# For real do not touch this unless you know how to
+local function makeApiRequest(player: player):
+    set {_category} to random element out of {-chucknorris::allowed-categories::*}
+    set {_url} to URI.create("{@api-url}")
+    set {_httprequest} to HttpRequest.newBuilder().uri({_url}).GET().build()
+    async run a tick later:
+        set {_response} to {-chucknorris::httpclient}.send({_httprequest}, HttpResponse.BodyHandlers.ofString())
+        set {_responseJson} to JsonParser.parseString({_response}.body()).getAsJsonObject()
+        set {_joke} to {_responseJson}.get("value").getAsString()
+        send formatMessage({_joke}) to {_player}

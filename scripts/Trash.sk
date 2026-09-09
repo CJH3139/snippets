@@ -1,0 +1,39 @@
+###
+# Trash Skript
+#
+# A /trash GUI for deleting unwanted items, with a summary of what was removed.
+#
+# Requires:
+# - Skript
+# - skript-gui
+# - SkBee
+#
+# author: CJH (https://discord.gg/5Dr4XR5Znj)
+# version: 1.0
+# license: Noncommercial (Do NOT resell or distribute this without permission)
+###
+
+options:
+    color_main: <##59a9ff>
+    color_secondary: <##dedede>
+    color_accent: <##3e99fa>
+    color_accent2: <##fc5757>
+
+command /trash [<string>]:
+    cooldown: 3 seconds
+    cooldown message: {@color_accent}&lWoah! {@color_secondary}Take a breather for {@color_main}%remaining%{@color_secondary} longer.
+    trigger:
+        create a gui with a chest inventory named "{@color_accent}&lTRASH!      {@color_accent2}&lClose To Delete" with 4 rows with removeable items:
+            run on gui close:
+                if items in event-inventory is not set:
+                    send "{@color_accent}&lTrash! {@color_secondary}There were no items within the wastebin."
+                    stop
+                set {_totalRemoved} to sum(item amount of items in event-inventory)
+                send "", "{@color_accent}&lTrash! {@color_secondary}You've deleted {@color_main}%{_totalRemoved}%{@color_secondary} items from your inventory." to player
+                send "{@color_accent2}&lTIP:{@color_accent2} Accidentally deleted something? Take a screenshot and open a ticket!", ""
+                loop items in event-inventory:
+                    set {_name} to component effective name of loop-item
+                    set {_messages::%{_name}%} to text component from " {@color_accent}- {@color_main}%amount of loop-item in event-inventory%x {@color_secondary}%{_name}%"
+                    add a new hover event showing loop-item to {_messages::%{_name}%}
+                send component {_messages::*} and "" to player
+            open gui to player

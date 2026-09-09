@@ -1,0 +1,338 @@
+###
+# Shop Skript
+#
+# SMP/Lifesteal styled shop with 100+ configurable items across 6 categories,
+# with buy and sell GUIs and per-item pricing.
+#
+# Requires:
+# - Skript
+# - SkBee
+# - skript-gui
+# - skript-reflect
+# - oopsk
+#
+# author: CJH (https://discord.gg/5Dr4XR5Znj)
+# version: 1.0
+# license: Noncommercial (Do NOT resell or distribute this without permission)
+###
+
+player property money:
+    get:
+        return {playerData::%expr-1%::money} ? 0
+    set:
+        set {playerData::%expr-1%::money} to change value
+    add:
+        add change value to {playerData::%expr-1%::money}
+    remove:
+        subtract change value from {playerData::%expr-1%::money}
+
+
+struct Shop:
+    id: item
+    category: string
+    buyPrice: integer
+    sellPrice: integer
+
+on script load:
+    delete {-shop::items::*}
+    set {-availableSlots::*} to (integers between 10 and 16) and (integers between 19 and 25)
+    set {-edgeSlots::*} to (integers between 0 to 9), 17, 18 and (integers between 26 and 35)
+
+    registerShop(coal, "ores", 50, 13)
+    registerShop(copper ingot, "ores", 70, 3)
+    registerShop(iron ingot, "ores", 102, 37)
+    registerShop(gold ingot, "ores", 140, 37)
+    registerShop(emerald, "ores", 100, 2)
+    registerShop(lapis lazuli, "ores", 50, 13)
+    registerShop(diamond, "ores", 450, 100)
+    registerShop(coal block, "ores", 180, 60)
+    registerShop(copper block, "ores", 110, 7)
+    registerShop(iron block, "ores", 570, 150)
+    registerShop(gold block, "ores", 700, 200)
+    registerShop(emerald block, "ores", 550, 20)
+    registerShop(lapis block, "ores", 230, 65)
+    registerShop(diamond block, "ores", 2500, 850)
+    registerShop(netherite ingot, "ores", 1200, 300)
+    registerShop(redstone, "ores", 70, 6)
+    registerShop(amethyst shard, "ores", 90, 10)
+    registerShop(raw gold, "ores", 90, 30)
+    registerShop(raw iron, "ores", 90, 17)
+    registerShop(raw copper, "ores", 70, 2)
+    registerShop(netherite block, "ores", 6000, 2000)
+    registerShop(redstone block, "ores", 190, 30)
+    registerShop(amethyst block, "ores", 30, 4)
+    registerShop(gold ore, "ores", 95, 30)
+    registerShop(iron ore, "ores", 110, 17)
+    registerShop(ancient debris, "ores", 500, 50)
+
+    registerShop(fermented spider eye, "brewing", 200)
+    registerShop(sugar, "brewing", 120)
+    registerShop(magma cream, "brewing", 250)
+    registerShop(spider eye, "brewing", 300)
+    registerShop(rabbit foot, "brewing", 450)
+    registerShop(dragon breath, "brewing", 950)
+    registerShop(glistering melon slice, "brewing", 180)
+    registerShop(blaze powder, "brewing", 320)
+    registerShop(ghast tear, "brewing", 450)
+    registerShop(glowstone dust, "brewing", 150)
+    registerShop(gunpowder, "brewing", 250)
+    registerShop(pufferfish, "brewing", 180)
+    registerShop(phantom membrane, "brewing", 180)
+    registerShop(blaze rod, "brewing", 420)
+
+    registerShop(totem of undying, "gear", 10000)
+    registerShop(obsidian, "gear", 75)
+    registerShop(respawn anchor, "gear", 125)
+    registerShop(experience bottle, "gear", 85)
+    registerShop(enchanted golden apple, "gear", 100000)
+    registerShop(ender pearl, "gear", 75)
+    registerShop(ender chest, "gear", 500)
+    registerShop(end crystal, "gear", 150)
+    registerShop(glowstone, "gear", 45)
+    registerShop(trident, "gear", 2500)
+    registerShop(shield, "gear", 250)
+    registerShop(tnt, "gear", 150)
+
+    registerShop(cooked porkchop, "food", 25)
+    registerShop(cooked mutton, "food", 22)
+    registerShop(cooked chicken, "food", 20)
+    registerShop(golden carrot, "food", 150)
+    registerShop(bread, "food", 17)
+    registerShop(baked potato, "food", 17)
+    registerShop(cooked beef, "food", 25)
+    registerShop(golden apple, "food", 450)
+
+    registerShop(sugar cane, "farming", 115, 16)
+    registerShop(wheat, "farming", 90, 10)
+    registerShop(cactus, "farming", 105, 5)
+    registerShop(melon slice, "farming", 80, 2)
+    registerShop(beetroot, "farming", 90, 7)
+    registerShop(glow berries, "farming", 95, 10)
+    registerShop(potato, "farming", 110, 13)
+    registerShop(carrot, "farming", 90, 13)
+    registerShop(pumpkin, "farming", 120, 17)
+    registerShop(kelp, "farming", 75, 1)
+    registerShop(nether wart, "farming", 170, 13)
+    registerShop(sweet berries, "farming", 75, 8)
+    registerShop(beetroot seeds, "farming", 60, 1)
+    registerShop(cocoa beans, "farming", 130, 6)
+    registerShop(melon seeds, "farming", 80, 3)
+    registerShop(pumpkin seeds, "farming", 80, 3)
+    registerShop(wheat seeds, "farming", 70, 1)
+    registerShop(bamboo, "farming", 45, 1)
+    registerShop(melon, "farming", 48, 2)
+    registerShop(cooked salmon, "farming", 90, 18)
+    registerShop(salmon, "farming", 90, 18)
+    registerShop(cooked cod, "farming", 90, 18)
+    registerShop(cod, "farming", 90, 18)
+    registerShop(pufferfish, "farming", 120, 17)
+
+    registerShop(feather, "mob", 0, 6)
+    registerShop(leather, "mob", 0, 8)
+    registerShop(chicken, "mob", 0, 7)
+    registerShop(porkchop, "mob", 0, 10)
+    registerShop(mutton, "mob", 0, 10)
+    registerShop(beef, "mob", 0, 10)
+    registerShop(rotten flesh, "mob", 0, 7)
+    registerShop(bone, "mob", 0, 15)
+    registerShop(blaze rod, "mob", 0, 32)
+    registerShop(slime ball, "mob", 0, 25)
+    registerShop(magma cream, "mob", 0, 26)
+    registerShop(gunpowder, "mob", 0, 23)
+    registerShop(ender pearl, "mob", 0, 18)
+    registerShop(arrow, "mob", 0, 2)
+
+local function registerShop(id: item, category: string, buyPrice: integer = 0, sellPrice: integer = 0):
+    set {-shop::items::%{_id}%} to Shop struct instance:
+        id: {_id}
+        category: {_category}
+        buyPrice: {_buyPrice}
+        sellPrice: {_sellPrice}
+
+local function shopGUI(player: player):
+    create a gui with virtual chest inventory with 4 rows named "&0Server Shop":
+        make gui slot 11 with brewing stand named "<##db0055>Brewing Shop" with lore "&8Shop Category" and " " and "&fGrab the best brewing" and "&fmaterials from here!" and " " and "&eClick to browse":
+            shopTypeGUI(player, "brewing")
+        make gui slot 12 with totem of undying named "&eGear Shop" with lore "&8Shop Category" and " " and "&fA shop that contains" and "&fequipment to fight!" and " " and "&eClick to browse":
+            shopTypeGUI(player, "gear")
+        make gui slot 14 with diamond named "<##007ac7>Ores Shop" with lore "&8Shop Category" and " " and "&fA shop that contains" and "&fores of all types!" and " " and "&eClick to browse":
+            shopTypeGUI(player, "ores")
+        make gui slot 15 with cooked beef named "<##dd8500>Food Shop" with lore "&8Shop Category" and " " and "&fA shop that contains" and "&ffood!" and " " and "&eClick to browse":
+            shopTypeGUI(player, "food")
+        make gui slot 21 with sugar cane named "&aFarming Shop" with lore "&8Shop Category" and " " and "&fA shop to sell and buy" and "&ffarming loot!" and " " and "&eClick to browse":
+            shopTypeGUI(player, "farming")
+        make gui slot 23 with bone named "<##db0055>Mob Loot Shop" with lore "&8Shop Category" and " " and "&fLoot from killing" and "&fmobs can be sold here!" and " " and "&eClick to browse":
+            shopTypeGUI(player, "mob")
+    open last gui to {_player}
+
+local function shopTypeGUI(player: player, type: string, page: integer = 1):
+    set {_items::*} to {-shop::items::*} where [input->category is {_type}]
+    set {_hasNext} to whether ({_page}*14+1)th element out of {_items::*} is set
+    set {_items::*} to elements from (({_page}-1)*14+1) to ({_page}*14) of {_items::*}
+    create a gui with virtual chest inventory with 4 rows named "&0%{_type} in proper case% | Page %{_page}%":
+        make gui slots {-edgeSlots::*} with black stained glass pane named "" without tooltip
+        if {_page} > 1:
+            make gui slot 27 with red dye named "<#ff0000>Previous Page ➡":
+                shopTypeGUI({_player}, {_type}, {_page}-1)
+        if {_hasNext} is true:
+            make gui slot 35 with lime dye named "<#00ff00>Next Page ✔":
+                shopTypeGUI({_player}, {_type}, {_page}+1)
+        loop {_items::*}:
+            set {_data} to loop-value
+            set {_lore::1} to ""
+            set {_lore::2} to "&c» &7Buy price: &c$%{_data}->buyPrice%"
+            if {_data}->sellPrice > 0:
+                set {_lore::3} to "&a» &7Sell price: &a$%{_data}->sellPrice%"
+            make gui slot {-availableSlots::%loop-iteration%} with {_data}->id with lore {_lore::*}:
+                if click action is left mouse button:
+                    {_data}->buyPrice > 0
+                    buyGUI({_player}, {_data})
+                else if click action is right mouse button:
+                    {_data}->sellPrice > 0
+                    sellGUI({_player}, {_data})
+    open last gui to {_player}
+
+local function buyGUI(player: player, data: struct):
+    set {_title} to "%{_data}->id%" in proper case
+    create a new gui with virtual chest inventory with 6 rows named "&0Buying %{_title}%":
+        if metadata "amount" of {_player} is not set:
+            set metadata "amount" of {_player} to 1
+        make gui slots (integers between 0 and 53) with black stained glass pane named "" without tooltip
+
+        set {_item} to {_data}->id with lore "&7Buy Price: &c$%{_data}->buyPrice * metadata "amount" of {_player}%"
+        make gui slot 22 with metadata "amount" of {_player} of {_item}
+
+        make gui slot 24 with lime stained glass pane named "&a&lAdd 1":
+            if metadata "amount" of {_player} >= 64:
+                send "&cYou can't add more, already at maximum!" to {_player}
+            else:
+                add 1 to metadata "amount" of {_player}
+                set {_item} to {_data}->id with lore "&7Buy Price: &c$%{_data}->buyPrice * metadata "amount" of {_player}%"
+                make gui slot 22 with metadata "amount" of {_player} of {_item}
+
+        make gui slot 25 with 10 lime stained glass pane named "&a&lAdd 10":
+            if metadata "amount" of {_player} + 10 > 64:
+                send "&cYou can't add 10, would exceed maximum!" to {_player}
+            else:
+                add 10 to metadata "amount" of {_player}
+                set {_item} to {_data}->id with lore "&7Buy Price: &c$%{_data}->buyPrice * metadata "amount" of {_player}%"
+                make gui slot 22 with metadata "amount" of {_player} of {_item}
+
+        make gui slot 26 with 64 lime stained glass pane named "&a&lSet to 64":
+            set metadata "amount" of {_player} to 64
+            set {_item} to {_data}->id with lore "&7Buy Price: &c$%{_data}->buyPrice * metadata "amount" of {_player}%"
+            make gui slot 22 with metadata "amount" of {_player} of {_item}
+
+        make gui slot 18 with red stained glass pane named "&c&lSet to 1":
+            set metadata "amount" of {_player} to 1
+            set {_item} to {_data}->id with lore "&7Buy Price: &c$%{_data}->buyPrice * metadata "amount" of {_player}%"
+            make gui slot 22 with metadata "amount" of {_player} of {_item}
+
+        make gui slot 19 with 10 red stained glass pane named "&c&lRemove 10":
+            if metadata "amount" of {_player} < 10:
+                send "&cYou can't remove 10, amount is too low!" to {_player}
+            else:
+                remove 10 from metadata "amount" of {_player}
+                set {_item} to {_data}->id with lore "&7Buy Price: &c$%{_data}->buyPrice * metadata "amount" of {_player}%"
+                make gui slot 22 with metadata "amount" of {_player} of {_item}
+
+        make gui slot 20 with red stained glass pane named "&c&lRemove 1":
+            if metadata "amount" of {_player} <= 1:
+                send "&cYou can't go below 1!" to {_player}
+            else:
+                remove 1 from metadata "amount" of {_player}
+                set {_item} to {_data}->id with lore "&7Buy Price: &c$%{_data}->buyPrice * metadata "amount" of {_player}%"
+                make gui slot 22 with metadata "amount" of {_player} of {_item}
+
+        make gui slot 41 with red stained glass named "&c&lCancel":
+            delete metadata "amount" of {_player}
+            shopGUI({_player})
+
+        make gui slot 39 with lime stained glass named "&a&lConfirm":
+            if money of {_player} < {_data}->buyPrice * metadata "amount" of {_player}:
+                delete metadata "amount" of {_player}
+                shopGUI({_player})
+                stop
+            else:
+                remove {_data}->buyPrice * metadata "amount" of {_player} from money of {_player}
+                give {_player} metadata "amount" of {_player} of {_data}->id
+                delete metadata "amount" of {_player}
+                shopGUI({_player})
+
+        run on gui close:
+            delete metadata "amount" of {_player}
+    open last gui to {_player}
+
+local function sellGUI(player: player, data: struct):
+    set {_title} to "%{_data}->id%" in proper case
+    create a new gui with virtual chest inventory with 6 rows named "&0Selling %{_title}%":
+        if metadata "amount" of {_player} is not set:
+            set metadata "amount" of {_player} to 1
+        make gui slots (integers between 0 and 53) with black stained glass pane named "" without tooltip
+        set {_item} to {_data}->id with lore "&7Sell Price: &a$%{_data}->sellPrice * metadata "amount" of {_player}%"
+        make gui slot 22 with metadata "amount" of {_player} of {_item}
+
+        make gui slot 24 with lime stained glass pane named "&a&lAdd 1":
+            if metadata "amount" of {_player} >= 64:
+                send "&cYou can't add more, already at maximum!" to {_player}
+            else:
+                add 1 to metadata "amount" of {_player}
+                set {_item} to {_data}->id with lore "&7Sell Price: &a$%{_data}->sellPrice * metadata "amount" of {_player}%"
+                make gui slot 22 with metadata "amount" of {_player} of {_item}
+        make gui slot 25 with 10 lime stained glass pane named "&a&lAdd 10":
+            if metadata "amount" of {_player} + 10 > 64:
+                send "&cYou can't add 10, would exceed maximum!" to {_player}
+            else:
+                add 10 to metadata "amount" of {_player}
+                set {_item} to {_data}->id with lore "&7Sell Price: &a$%{_data}->sellPrice * metadata "amount" of {_player}%"
+                make gui slot 22 with metadata "amount" of {_player} of {_item}
+
+        make gui slot 26 with 64 lime stained glass pane named "&a&lSet to 64":
+            set metadata "amount" of {_player} to 64
+            set {_item} to {_data}->id with lore "&7Sell Price: &a$%{_data}->sellPrice * metadata "amount" of {_player}%"
+            make gui slot 22 with metadata "amount" of {_player} of {_item}
+
+        make gui slot 18 with red stained glass pane named "&c&lSet to 1":
+            set metadata "amount" of {_player} to 1
+            set {_item} to {_data}->id with lore "&7Sell Price: &a$%{_data}->sellPrice * metadata "amount" of {_player}%"
+            make gui slot 22 with metadata "amount" of {_player} of {_item}
+
+        make gui slot 19 with 10 red stained glass pane named "&c&lRemove 10":
+            if metadata "amount" of {_player} < 10:
+                send "&cYou can't remove 10, amount is too low!" to {_player}
+            else:
+                remove 10 from metadata "amount" of {_player}
+                set {_item} to {_data}->id with lore "&7Sell Price: &a$%{_data}->sellPrice * metadata "amount" of {_player}%"
+                make gui slot 22 with metadata "amount" of {_player} of {_item}
+
+        make gui slot 20 with red stained glass pane named "&c&lRemove 1":
+            if metadata "amount" of {_player} <= 1:
+                send "&cYou can't go below 1!" to {_player}
+            else:
+                remove 1 from metadata "amount" of {_player}
+                set {_item} to {_data}->id with lore "&7Sell Price: &a$%{_data}->sellPrice * metadata "amount" of {_player}%"
+                make gui slot 22 with metadata "amount" of {_player} of {_item}
+
+        make gui slot 41 with red stained glass named "&c&lCancel":
+            delete metadata "amount" of {_player}
+            shopGUI({_player})
+
+        make gui slot 39 with lime stained glass named "&a&lConfirm":
+            set {_playerAmount} to amount of {_data}->id in {_player}'s inventory
+            if {_playerAmount} < metadata "amount" of {_player}:
+                send "&cYou don't have enough of this item to sell!" to {_player}
+                delete metadata "amount" of {_player}
+                shopGUI({_player})
+                stop
+            else:
+                remove metadata "amount" of {_player} of {_data}->id from {_player}'s inventory
+                add {_data}->sellPrice * metadata "amount" of {_player} to money of {_player}
+                delete metadata "amount" of {_player}
+                shopGUI({_player})
+
+        run on gui close:
+            delete metadata "amount" of {_player}
+
+command /shop:
+    trigger:
+        shopGUI(player)

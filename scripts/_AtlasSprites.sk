@@ -1,0 +1,78 @@
+###
+# Atlas Sprites
+#
+# Send atlas sprites (items, blocks, GUI icons, effects, particles, paintings) as chat components.
+#
+# Requires:
+# - Skript (Version 2.14.3 or lower)
+# - skript-reflect
+# - SkBee
+#
+# author: CJH (https://discord.gg/5Dr4XR5Znj)
+# version: 1.0
+# license: Noncommercial (Do NOT resell or distribute this without permission)
+###
+
+import:
+    net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
+
+#   To send the component ONLY in chat you just do something like:
+
+#   send component sprite("items:item/diamond") to player
+#   send component sprite("gui:hud/heart/full") to player
+#   send component sprite("paintings:kebab") to player
+
+# or just use the function below but leave the third arg blank:
+
+#   sendItemSprite(player, diamond)
+#   sendBlockSprite(player, stone)
+#
+#   Examples of sending different types of sprites:
+
+#   sendItemSprite(player, diamond, "Diamond!")
+#   sendBlockSprite(player, stone, "Stone")
+#   sendGuiSprite(player, "hud/heart/full", "Full HP", "#FF5555")
+#   sendEffectSprite(player, "speed", "Speed")
+#   sendParticleSprite(player, "flame", "Flame")
+#   sendPaintingSprite(player, "kebab", "Kebab")
+#   sendSprite(player, "minecraft:gui", "hud/heart/full", "text", "#color")
+#
+#   some good GUI sprite paths (in my opinion):
+#   hud/heart/full  hud/heart/half  hud/heart/container
+#   hud/food_full   hud/food_half   hud/armor_full
+#   boss_bar/blue_background
+
+function sprite(path: string) :: textcomp:
+    set {_parts::*} to {_path} split at ":"
+    return object text component with atlas {_parts::1} with sprite {_parts::2}
+
+local function buildJson(atlasKey: text, spritePath: text, message: text, messageColor: text) :: text:
+    set {_spriteObj} to "{""atlas"":""%{_atlasKey}%"",""sprite"":""%{_spritePath}%""}"
+    return "[%{_spriteObj}%]" if {_message} is ""
+    set {_messageObj} to "{""text"":"" %{_message}%"""
+    set {_messageObj} to "%{_messageObj}%,""color"":""%{_messageColor}%""" if {_messageColor} is not ""
+    add "}" to {_messageObj}
+    return "[%{_spriteObj}%,%{_messageObj}%]"
+
+function sendSprite(p: player, atlas: text, path: text, message: text = "", color: text = ""):
+    set {_json} to buildJson({_atlas}, {_path}, {_message}, {_color})
+    set {_comp} to GsonComponentSerializer.gson().deserialize({_json})
+    {_p}.sendMessage({_comp})
+
+function sendItemSprite(p: player, item: itemtype, message: text = "", color: text = ""):
+    sendSprite({_p}, "minecraft:items", "item/%{_item}%", {_message}, {_color})
+
+function sendBlockSprite(p: player, block: itemtype, message: text = "", color: text = ""):
+    sendSprite({_p}, "minecraft:blocks", "block/%{_block}%", {_message}, {_color})
+
+function sendGuiSprite(p: player, path: text, message: text = "", color: text = ""):
+    sendSprite({_p}, "minecraft:gui", {_path}, {_message}, {_color})
+
+function sendEffectSprite(p: player, effect: text, message: text = "", color: text = ""):
+    sendSprite({_p}, "minecraft:gui", "mob_effect/%{_effect}%", {_message}, {_color})
+
+function sendParticleSprite(p: player, particle: text, message: text = "", color: text = ""):
+    sendSprite({_p}, "minecraft:particles", {_particle}, {_message}, {_color})
+
+function sendPaintingSprite(p: player, painting: text, message: text = "", color: text = ""):
+    sendSprite({_p}, "minecraft:paintings", {_painting}, {_message}, {_color})

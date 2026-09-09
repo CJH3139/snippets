@@ -1,0 +1,195 @@
+###
+# AuctionHouse Skript
+#
+# Auction House system with GUI-based buying, selling, and listing management,
+# including confirmation menus, pagination, and player-owned listings.
+#
+# Requires:
+# - Skript
+# - SkBee
+# - skript-gui
+# - CJHUtils.sk
+#
+# author: CJH (https://discord.gg/5Dr4XR5Znj)
+# version: 1.0
+# license: Noncommercial (Do NOT resell or distribute this without permission)
+###
+
+on load:
+    set {-auction::minPrice} to 1 # Minimun amount of cash you can list and item for
+    set {-auction::maxListing} to 500
+    set {-auction::blacklist::*} to air, bedrock and barrier
+
+local function getCurrency(player: player) :: number:
+    return {playerData::%{_player}%::money} # Edit to your currency variable
+
+local function removeCurrency(player: player, a: number):
+    remove {_a} from {playerData::%{_player}%::money} # Edit to your currency variable
+
+local function addCurrency(player: player, a: number):
+    add {_a} to {playerData::%{_player}%::money} # Edit to your currency variable
+
+function ahGUI(page: integer, player: player):
+    play sound "entity.shulker.hurt_closed" to {_player}
+    create gui with virtual chest inventory with 6 rows named "&8ℹ Auction House":
+        format gui slot (integers between 45 and 53) with gray stained glass pane named "&7" without tooltip
+        set {_slot} to 0
+        loop 45 times:
+            set {_index} to ({_page} * 45)
+            add {_slot} to {_index}
+            if {-auction::item::index::%{_index}%} is set:
+                set {_item} to {-auction::item::index::%{_index}%} with lore "&8ᴀᴜᴄᴛɪᴏɴ ɪᴛᴇᴍ", "", "&a| &fSeller: &e%{-auction::item::owner::%{_index}%}%", "&a| &fPrice: &2$&a%formatNumber({-auction::item::price::%{_index}%})%", "" and "&f➥ <##D1D0D1>Click to purchase"
+                set boolean tag "minecraft:attribute_modifiers;show_in_tooltip" of vanilla nbt of {_item} to false
+                format gui slot {_slot} with {_item}:
+                    if {_player} != {-auction::item::owner::%{_Index}%}:
+                        purchaseConfirmation({_index},{_player})
+                    else:
+                        send "<##FF1212>✕ You can't buy your own items" to {_player}
+                        play sound "block.note_block.bass" to {_player}
+                set {_slot} to {_slot} +1
+        if {_page} > 0:
+            format gui slot 45 with paper named "&4Previous Page":
+                play sound "block.note_block.snare" at pitch 5 to {_player}
+                ahGUI({_page} - 1,{_player})
+        if size of {-auction::item::index::*} > (({_page} + 1) * 45):
+            format gui slot 53 with paper named "&2Next Page":
+                play sound "block.note_block.snare" at pitch 5 to {_player}
+                ahGUI({_page} + 1,{_player})
+        format gui slot 49 with {-close}:
+            play sound "block.note_block.snare" at pitch 5 to {_player}
+            close {_player}'s inventory
+        format gui slot 51 with chest named "&aYour Listings" with lore "&eClick to view your listings":
+            ownListingGUI({_player})
+            play sound "block.note_block.snare" at pitch 5 to {_player}
+        format gui slot 47 with book named "&aAuction Listing" with lore "&f➥ <##D1D0D1>To list an auction item use" and "&e   /ah sell (Price)"
+        open gui for {_player}
+
+on tab complete of "/ah", "/auctionhouse" or "/auction":
+    set tab completions for position 1 to "sell"
+    set tab completions for position 2 to "price"
+
+command ah [<type:string>] [<price:number>]:
+    aliases: auction, auctionhouse, bid
+    trigger:
+        if {_type} = "sell":
+            set {_heldItem} to player's held item
+            if any:
+                checkError(player, whether {_price} is not set, "<##FF1212>✕ Usage: /ah sell (price)") is true
+                checkError(player, whether {_price} <= {-auction::minPrice}, "<##FF1212>✕ Price must me more than <##D1D0D1>$%{-auction::minPrice}%") is true
+                checkError(player, whether {-auction::blacklist::*} contains {_heldItem}, "<##FF1212>✕ You can't sell this item") is true
+                checkError(player, whether {playerData::%player%::money} < {_price}, "<##FF1212>✕ You don't have enough money") is true
+                checkError(player, whether {-auction::listed::%player%} ? 0 > {-auction::maxListing}, "<##FF1212>✕ You can only list %{-auction::maxListing}% items at once") is true
+            then:
+                play sound "block.note_block.bass" to player
+                stop
+            set {_size} to size of {-auction::item::index::*}
+            set {-auction::item::index::%{_size}%} to {_heldItem}
+            set {-auction::item::owner::%{_size}%} to player
+            set {-auction::item::price::%{_size}%} to {_price}
+            play sound "entity.shulker.hurt_closed" to player
+            send "&2$ &fSold &a%type of {_heldItem}% &ffor &2$&a%{_price}%" to player
+            play sound "block.note_block.chime" to player
+            set player's held item to air
+            add 1 to {-auction::listed::%player%}
+        else:
+            ahGUI(0,player)
+
+function purchaseConfirmation(listing: integer, player: player):
+    play sound "entity.shulker.hurt_closed" to {_player}
+    create gui with virtual chest inventory with 1 rows named "&8ℹ Purchase Confirmation":
+        set {_item} to {-auction::item::index::%{_listing}%} with lore "&8ᴀᴜᴄᴛɪᴏɴ ɪᴛᴇᴍ" and "" and "&a| &fSeller: &e%{-auction::item::owner::%{_listing}%}%" and "&a| &fPrice: &2$&a%formatNumber({-auction::item::price::%{_listing}%})%" and "" and "&f➥ <##D1D0D1>Confirmation"
+        set boolean tag "minecraft:attribute_modifiers;show_in_tooltip" of vanilla nbt of {_item} to false
+        set {_itemGive} to {-auction::item::index::%{_listing}%}
+        if {-auction::item::index::%{_listing}%} is not set:
+            close {_player}'s inventory
+            send "<##FF1212>✕ Error: Refunded" to {_player}
+            play sound "block.note_block.bass" to {_player}
+            stop
+        set {_price} to {-auction::item::price::%{_listing}%}
+        set {_owner} to {-auction::item::owner::%{_listing}%}
+        format gui slot (integers between 0 and 3) with green stained glass pane of mending named "&aConfirm" with all item flags:
+            if any:
+                checkError({_player}, whether getCurrency({_player}) < {-auction::item::price::%{_listing}%}, "<##FF1212>✕ You can't afford this") is true
+                checkError({_player}, whether {_player} cannot hold 1 cake, "<##FF1212>✕ Your inventory is full") is true
+                checkError({_player}, whether {_owner} != {-auction::item::owner::%{_listing}%}, "<##FF1212>✕ Error: Refunded (Error Code: 1)") is true
+                checkError({_player}, whether {_price} != {-auction::item::price::%{_listing}%}, "<##FF1212>✕ Error: Refunded (Error Code: 2)") is true
+                checkError({_player}, whether {_itemGive} != {-auction::item::index::%{_listing}%}, "<##FF1212>✕ Error: Refunded (Error Code: 3)") is true
+            then:
+                play sound "block.note_block.bass" to {_player}
+                stop
+            set {_price} to {-auction::item::price::%{_listing}%}
+            set {_owner} to {-auction::item::owner::%{_listing}%}
+
+            delete {-auction::item::price::%{_listing}%}
+            delete {-auction::item::index::%{_listing}%}
+            delete {-auction::item::owner::%{_listing}%}
+            ahReindex()
+            ahRefresh()
+            removeCurrency({_player},{_price})
+            addCurrency({_owner}, {_price})
+            send "" and "<##4DF839>&lAUCTION SOLD" and "&8▪ &f%{_player}% has bought your auction for &2$&a%formatNumber({_price})%" and "" to {_owner}
+            play sound "block.note_block.chime" to {_owner}
+            remove 1 from {-auction::listed::%{_owner}%}
+            send action bar "&c- %formatNumber({_price})% Cash" to {_player}
+            play sound "block.note_block.chime" to {_player}
+            close {_player}'s inventory
+            give {_player} {_itemGive}
+        format gui slot 4 with {_item}
+        format gui slot (integers between 5 and 8) with red stained glass pane named "&cCancel" with all item flags:
+            close {_player}'s inventory
+            play sound "block.note_block.snare" at pitch 5 to {_player}
+        open gui for {_player}
+
+function ahReindex():
+    set {_item::*} to {-auction::item::index::*}
+    delete {-auction::item::index::*}
+    loop {_item::*}:
+        set {-auction::item::index::%loop-iteration - 1%} to loop-value
+    set {_price::*} to {-auction::item::price::*}
+    delete {-auction::item::price::*}
+    loop {_price::*}:
+        set {-auction::item::price::%loop-iteration - 1%} to loop-value
+    set {_owner::*} to {-auction::item::owner::*}
+    delete {-auction::item::owner::*}
+    loop {_owner::*}:
+        set {-auction::item::owner::%loop-iteration - 1%} to loop-value
+
+function ownListingGUI(player: player):
+    create gui with virtual chest inventory with 6 rows named "&8ℹ Your Listings":
+        format gui slot (integers between 45 and 53) with gray stained glass pane named "&7" without tooltip
+        set {_slot} to 0
+        loop {-auction::item::owner::*}:
+            loop-value = {_player}
+            set {_item} to {-auction::item::index::%loop-index%} with lore "&8ᴀᴜᴄᴛɪᴏɴ ɪᴛᴇᴍ" and "" and "&a| &fSeller: &8[&dYou&8]" and "&a| &fPrice: &2$&a%formatNumber({-auction::item::price::%loop-index%})%" and "" and "&f➥ <##D1D0D1>Click to cancel listing"
+            set boolean tag "minecraft:attribute_modifiers;show_in_tooltip" of vanilla nbt of {_item} to false
+            set {_itemGive} to {-auction::item::index::%loop-index%}
+            set {_} to loop-index
+            format gui slot {_slot} with {_item}:
+                if {_player} can hold 1 cake:
+                    delete {-auction::item::price::%{_}%}
+                    delete {-auction::item::index::%{_}%}
+                    delete {-auction::item::owner::%{_}%}
+                    ahReindex()
+                    ahRefresh()
+                    ownListingGUI({_player})
+                    play sound "block.anvil.land" to {_player}
+                    give {_player} {_itemGive}
+                else:
+                    send "<##FF1212>✕ Your inventory is full" to player
+                    play sound "block.note_block.bass" to player
+            set {_slot} to {_slot} +1
+        format gui slot 49 with {-close}:
+            play sound "block.note_block.snare" at pitch 5 to {_player}
+            close {_player}'s inventory
+        format gui slot 48 with book named "&dBack" with lore "&7Click to return to the previous menu":
+            play sound "block.note_block.snare" at pitch 5 to {_player}
+            ahGUI(0,{_player})
+        open gui for {_player}
+
+
+function ahRefresh():
+    loop all players:
+        if name of top inventory of loop-player = "&8ℹ Your Listings":
+            ownListingGUI(loop-player)
+        if name of top inventory of loop-player = "&8ℹ Auction House":
+            ahGUI(0,loop-player)

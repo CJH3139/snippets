@@ -1,0 +1,96 @@
+###
+# PermSK Replacement/LuckPerms API
+# A flexible luckperms API with support for syntax registration
+#
+# Requires:
+# - Skript
+# - skript-reflect
+# - LuckPerms
+#
+# author: CJH (https://discord.gg/5Dr4XR5Znj)
+# version: 1.0
+# license: Noncommercial (Do NOT resell or distribute this without permission)
+###
+
+import:
+    net.luckperms.api.LuckPerms
+    net.luckperms.api.LuckPermsProvider
+    net.luckperms.api.node.Node
+
+#
+# Property Expressions
+#
+
+offlineplayer property ss prefix:
+    get:
+        return getPrefix(expr-1)
+
+offlineplayer property ss highest group:
+    get:
+        return getHighestGroup(expr-1)
+
+expression [the] prefix of group %string%:
+    get:
+        return getGroupPrefix(expr-1)
+
+# Most of the time useless
+player property ss luckperm data:
+    get:
+        return getLuckPermData(expr-1)
+
+#
+# Private API
+#
+
+function getLuckPermData(player: player) :: object:
+    set {_load} to LuckPermsProvider.get().getUserManager().loadUser({_player}.getUniqueId())
+    set {_done} to {_load}.isDone()
+    while {_done} is false:
+        set {_done} to {_load}.isDone()
+    return {_load}.get()
+
+# Same thing as "lp user {user} permission add ..." silly business but its silent so its superior
+# Setting `persistance` to false means they only keep the permissions for one sesson, logging out and back in erases changes made here
+function addPerms(player: player, permission: string, persistance: boolean = true):
+    # Permission building
+    LuckPermsProvider.get().getUserManager().getUser({_player}.getUniqueId()).data().add(Node.builder({_permission}).build())
+
+    # Permission saving
+    {_persistance} is true
+    LuckPermsProvider.get().getUserManager().saveUser(LuckPermsProvider.get().getUserManager().getUser({_player}.getUniqueId()))
+
+# Same thing as "lp user {user} permission remove ..." silly business but its silent so its superior
+# Setting `persistance` to false means they only keep the permissions for one sesson, logging out and back in erases changes made here
+function removePerms(player: player, permission: string, persistance: boolean = true):
+    # Permission removal
+    LuckPermsProvider.get().getUserManager().getUser({_player}.getUniqueId()).data().remove(Node.builder({_permission}).build())
+
+    # Permission saving
+    {_persistance} is true
+    LuckPermsProvider.get().getUserManager().saveUser(LuckPermsProvider.get().getUserManager().getUser({_player}.getUniqueId()))
+
+#function getGroups() returns strings:
+    #set {_rawGroup} to LuckPermsProvider.get().getGroupManager().getLoadedGroups()
+    #loop {_rawGroup}.toArray():
+        #add (loop-value).getName() to {_groups::*}
+    #return {_groups::*}
+
+# <summary>
+# Gets a user's highest priority group ID
+# </summary>
+function getHighestGroup(player: offlineplayer) :: string:
+    return LuckPermsProvider.get().getUserManager().getUser({_player}.getUniqueId()).getPrimaryGroup()
+
+# <summary>
+# Gets a user's highest priority group prefix but its FORMATTED!!!!
+# </summary>
+function getPrefix(player: offlineplayer) :: string:
+    return formatted LuckPermsProvider.get().getUserManager().loadUser({_player}.getUniqueId()).join().getCachedData().getMetaData().getPrefix()
+
+# <summary>
+# Gets a group's prefix by group name
+# </summary>
+function getGroupPrefix(group: string) :: string:
+    set {_g} to LuckPermsProvider.get().getGroupManager().getGroup({_group})
+    if {_g} is set:
+        return {_g}.getCachedData().getMetaData().getPrefix()

@@ -1,0 +1,61 @@
+###
+# Staff Chat Skript
+#
+# Staff-only chat channel with /sc <message> and a persistent toggle mode.
+#
+# Requires:
+# - Skript
+# - SkBee
+#
+# author: Fusezion (https://discord.gg/5Dr4XR5Znj)
+# version: 1.0
+# license: Noncommercial (Do NOT resell or distribute this without permission)
+###
+
+options:
+    command:
+        permission: cjh.command.staffchat
+        permission.message: &cYou lack the life reasoning skill required for this command
+        staffchat.enabled: &c&lSTAFF &8| &7Staff chat has been &aenabled
+        staffchat.disabled: &c&lSTAFF &8| &7Staff chat has been &cdisabled
+    # Supports <player>, <display_name>, <message> and minimessage parsing (message too)
+    staffchat.format: <red><b>STAFF</b> <dark_gray>| <aqua><player><gray>: <message>
+    scoreboard.tag: staffchat_toggle # Do not change unless you know what you're doing
+
+command /sc [<message:string>]:
+    permission: {@command.permission}
+    permission message: {@command.permission.message}
+    trigger:
+        if {_message} is not set:
+            if player has scoreboard tag "{@scoreboard.tag}":
+                remove "{@scoreboard.tag}" from scoreboard tags of player
+                send "{@command.staffchat.disabled}"
+            else:
+                add "{@scoreboard.tag}" to scoreboard tags of player
+                send "{@command.staffchat.enabled}"
+        else:
+            set {_messageResolvers::message} to resolver("message", minimessage from {_message})
+            set {_messageResolvers::player} to resolver("player", name of player)
+            set {_messageResolvers::display_name} to resolver("display_name", display name of player)
+            set {_message} to minimessage from "{@staffchat.format}" with {_messageResolvers::*}
+            send {_message} to players where [input has permission "{@command.permission}"]
+
+on join:
+    player has scoreboard tag "{@scoreboard.tag}"
+    if player doesn't have permission "{@command.permission}":
+        remove "{@scoreboard.tag}" from scoreboard tags of player
+        stop
+    wait a second
+    send "{@command.staffchat.enabled}"
+
+on chat:
+    player has scoreboard tag "{@scoreboard.tag}"
+    if player doesn't have permission "{@command.permission}":
+        remove "{@scoreboard.tag}" from scoreboard tags of player
+        stop
+    cancel event
+    set {_messageResolvers::message} to resolver("message", minimessage from message)
+    set {_messageResolvers::player} to resolver("player", name of player)
+    set {_messageResolvers::display_name} to resolver("display_name", display name of player)
+    set {_players::*} to players where [input has permission "{@command.permission}"]
+    send (minimessage from "{@staffchat.format}" with {_messageResolvers::*}) to {_players::*}

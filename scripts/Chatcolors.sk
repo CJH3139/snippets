@@ -1,0 +1,191 @@
+###
+# Chatcolors Skript
+#
+# A customizable chat color system with GUI and dialog support, allowing players to
+# select and unlock chat colors by category using permissions. Includes 60+ Colors
+#
+# Requires:
+# - Skript
+# - SkBee
+# - SkNMS
+# - skript-gui
+# - skript-reflect
+# - CJHUtils.sk
+#
+# author: CJH (https://discord.gg/5Dr4XR5Znj)
+# version: 1.0
+# license: Noncommercial (Do NOT resell or distribute this without permission)
+###
+
+using script reflection
+
+function getChatColors(category: string) :: strings: # Colors taken from https://tailwindcss.com/docs/colors
+    if {_category} is "red":
+        add "#fecaca" to {_colors::*} # red-200
+        add "#fca5a5" to {_colors::*} # red-300
+        add "#f87171" to {_colors::*} # red-400
+        add "#ef4444" to {_colors::*} # red-500
+        add "#dc2626" to {_colors::*} # red-600
+        add "#b91c1c" to {_colors::*} # red-700
+        add "#991b1b" to {_colors::*} # red-800
+        add "#7f1d1d" to {_colors::*} # red-900
+
+    if {_category} is "orange":
+        add "#fed7aa" to {_colors::*} # orange-200
+        add "#fdba74" to {_colors::*} # orange-300
+        add "#fb923c" to {_colors::*} # orange-400
+        add "#f97316" to {_colors::*} # orange-500
+        add "#ea580c" to {_colors::*} # orange-600
+        add "#c2410c" to {_colors::*} # orange-700
+        add "#9a3412" to {_colors::*} # orange-800
+        add "#7c2d12" to {_colors::*} # orange-900
+
+    if {_category} is "yellow":
+        add "#fef08a" to {_colors::*} # yellow-200
+        add "#fde047" to {_colors::*} # yellow-300
+        add "#facc15" to {_colors::*} # yellow-400
+        add "#eab308" to {_colors::*} # yellow-500
+        add "#ca8a04" to {_colors::*} # yellow-600
+        add "#a16207" to {_colors::*} # yellow-700
+        add "#854d0e" to {_colors::*} # yellow-800
+        add "#713f12" to {_colors::*} # yellow-900
+
+    if {_category} is "green":
+        add "#bbf7d0" to {_colors::*} # green-200
+        add "#86efac" to {_colors::*} # green-300
+        add "#4ade80" to {_colors::*} # green-400
+        add "#22c55e" to {_colors::*} # green-500
+        add "#16a34a" to {_colors::*} # green-600
+        add "#15803d" to {_colors::*} # green-700
+        add "#166534" to {_colors::*} # green-800
+        add "#14532d" to {_colors::*} # green-900
+
+    if {_category} is "blue":
+        add "#bfdbfe" to {_colors::*} # blue-200
+        add "#93c5fd" to {_colors::*} # blue-300
+        add "#60a5fa" to {_colors::*} # blue-400
+        add "#3b82f6" to {_colors::*} # blue-500
+        add "#2563eb" to {_colors::*} # blue-600
+        add "#1d4ed8" to {_colors::*} # blue-700
+        add "#1e40af" to {_colors::*} # blue-800
+        add "#1e3a8a" to {_colors::*} # blue-900
+
+    if {_category} is "purple":
+        add "#e9d5ff" to {_colors::*} # purple-200
+        add "#d8b4fe" to {_colors::*} # purple-300
+        add "#c084fc" to {_colors::*} # purple-400
+        add "#a855f7" to {_colors::*} # purple-500
+        add "#9333ea" to {_colors::*} # purple-600
+        add "#7e22ce" to {_colors::*} # purple-700
+        add "#6b21a8" to {_colors::*} # purple-800
+        add "#581c87" to {_colors::*} # purple-900
+
+    if {_category} is "pink":
+        add "#fbcfe8" to {_colors::*} # pink-200
+        add "#f9a8d4" to {_colors::*} # pink-300
+        add "#f472b6" to {_colors::*} # pink-400
+        add "#ec4899" to {_colors::*} # pink-500
+        add "#db2777" to {_colors::*} # pink-600
+        add "#be185d" to {_colors::*} # pink-700
+        add "#9d174d" to {_colors::*} # pink-800
+        add "#831843" to {_colors::*} # pink-900
+
+    if {_category} is "misc":
+        add "#AAAAAA" to {_colors::*}
+        add "#000000" to {_colors::*}
+        add "#FFFFFF" to {_colors::*}
+        #add "#000000" to {_colors::*}
+        #add "#000000" to {_colors::*}
+        #add "#000000" to {_colors::*}
+        #add "#000000" to {_colors::*}
+        #add "#000000" to {_colors::*}
+
+    return {_colors::*}
+
+function chatColorDialog(p: player, color: text = ""):
+    open multi action dialog to {_p}:
+        title: " "
+        body:
+            add plain message body:
+                contents: "Chat Colors"
+            add plain message body:
+                contents: "%nl%Click a button below to view available chat colors:"
+        can_close_with_escape: true
+        after_action: "close"
+        columns: 1
+        actions:
+            set {_colors::*} to "red", "orange", "yellow", "green", "blue", "purple", "pink" and "misc"
+            loop {_colors::*}:
+                if loop-value is {_color}:
+                    if {_p} does not have permission "chatcolor.category.%loop-value%":
+                        add static action button:
+                            label: "&cYou don't have this category unlocked!"
+                            tooltip: "Get a higher rank to unlock %loop-value%!"
+                    else:
+                        loop getChatColors(loop-value):
+                            add static action button:
+                                label: minimessage from "<%loop-value-2%>%loop-value-1 in proper case%"
+                                tooltip: "Click to select this color"
+                                action: click event to run custom payload with key "chatcolors:set" with data nbt compound from "{chat_color:""%loop-value-2%""}"
+                else:
+                    add static action button:
+                        label: minimessage from "<%3rd element of getChatColors(loop-value)%>&c%loop-value in proper case%"
+                        tooltip: "Click to expand %loop-value% category!"
+                        action: click event to run command "chatcolors dialogs %loop-value%"
+
+on custom click:
+    event-namespacedkey = "chatcolors:set"
+    set {_nbt} to string tag "chat_color" of event-nbt
+    if player has permission "chatcolor.color.%{_nbt}%":
+        set {playerData::%player%::chatcolor} to {_nbt}
+        send formatted "&aYour chatcolor has been set to <%{_nbt}%>this color&a!" to player
+    else:
+        error(player, "You don't have permission!")
+
+offlineplayer property chatcolor:
+    get:
+        return {playerData::%expr-1%::chatcolor} ? "#AAAAAA"
+
+function chatColorGUI(player: player):
+    set {_colors::*} to "red", "orange", "yellow", "green", "", "blue", "purple", "pink" and "misc"
+    create a gui with virtual dropper inventory named "&0Chatcolors":
+        loop {_colors::*}:
+            set {_color} to loop-value
+            if loop-iteration is 5:
+                continue
+            format gui slot (loop-iteration)-1 with ("%loop-value% dye" parsed as item ? white dye) named minimessage from "<%3rd element of getChatColors(loop-value)%>&c%loop-value in proper case% Chatcolor" with lore "&8Category", "" and "&e➥ Click to Open!":
+                set {_function} to a function named "chatcolorCategory"
+                run {_function} with arguments {_player} and {_color}
+        format gui slot 4 with stone button named "&fℹ Info" with lore "", "&7➥ Change your chat color to stand out!", "&7➥ Choose from a color category to expand it!", "", "&e&lTIP: &eJoin on versions 1.21.6+ for the best" and "&eexperience and improved dialog GUI!"
+    open last gui to {_player}
+
+local function chatcolorCategory(player: player, type: string):
+    set {_slots::*} to 0,1,2,3,5,6,7,8
+    create a gui with virtual dropper inventory named "%{_type} in proper case% Chatcolor":
+        loop getChatColors({_type}):
+            set {_color} to loop-value
+            format gui slot {_slots::%loop-iteration%} with ("%{_type}% dye" parsed as item ? white dye) named minimessage from "<%loop-value%>%{_type} in proper case%" with lore "&7Color", "", formatted "&f➥ Ex) <%loop-value%>This is a cool color!", "" and "&e➥ Click to Equip!":
+                if player has permission "chatcolor.color.%{_color}%":
+                    set {playerData::%{_player}%::chatcolor} to {_color}
+                    send formatted "&aYour chatcolor has been set to <%{_color}%>this color&a!" to {_player}
+                    close {_player}'s inventory
+                else:
+                    error({_player}, "You don't have permission!")
+        format gui slot 4 with barrier named "&cClose" with lore "&f➥ Click to close GUI":
+            close {_player}'s inventory
+    open last gui to {_player}
+
+command /chatcolors [<type:string>] [<color:text>]:
+    trigger:
+        if player's version >= 1.21.6:
+            if {_type} is "GUI":
+                chatColorGUI(player)
+            else:
+                chatColorDialog(player, {_color} ? "")
+        else:
+            chatColorGUI(player)
+
+on tab complete of "/chatcolors":
+    version of player >= 1.21.6
+    set tab completions for position 1 to "GUI" and "Dialogs"
+    set tab completions for position 2 to "red", "orange", "yellow", "green", "", "blue", "purple", "pink" and "misc"

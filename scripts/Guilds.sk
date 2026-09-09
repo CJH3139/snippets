@@ -1,0 +1,353 @@
+###
+# Guilds Skript
+#
+# A complete team/clan system with ranks, invites, team chat, and management commands,
+# allowing players to create, manage, and interact within teams with built-in permissions and controls.
+#
+# Requires:
+# - Skript
+# - SkBee
+#
+# author: CJH & YouCanDream (https://discord.gg/5Dr4XR5Znj)
+# version: 1.0
+# license: Noncommercial (Do NOT resell or distribute this without permission)
+###
+
+command /team [<text>] [<text>]:
+    aliases: teams, clan, clans
+    cooldown: 1.5 seconds
+    cooldown message: <##deb850>&lTEAM &8• &7Please wait &f%remaining time%&7.
+    trigger:
+        if arg-1 is "help":
+            sendTeamHelpMessage(player)
+            stop
+        if arg-1 is not set:
+            sendTeamHelpMessage(player)
+            stop
+        if getTeam(player) is not set:
+            if arg-1 is "promote", "demote", "kick", "leave", "invite", "chat", "rename", "sethome", "home", "deposit", "withdraw", "balance", or "glow":
+                sendTeamMessage(player, "&cYou need to be in a team to use this command!", "FAIL")
+                stop
+            else if arg-1 is "create":
+                if arg-2 is not set:
+                    sendTeamMessage(player, "&cYou need to specify a team name!", "FAIL")
+                    stop
+                createTeam(player, arg-2)
+            else if arg-1 is not "join" or "info" or "create":
+                sendTeamHelpMessage(player)
+        if arg-1 is "join":
+            joinTeam(player, arg-2)
+            stop
+        else if arg-1 is "disband":
+            if getRankNumber(getPlayerTeamRank(player)) != 4:
+                sendTeamMessage(player, "&cYou must be the team owner in order to disband!", "FAIL")
+                stop
+            if time since ((metadata "teamDisband" of player) ? 30 seconds ago) > 15 seconds:
+                sendTeamMessage(player, "Type &f/team disband &7again within 15 seconds in order to disband your team. &cThis action is permanent!", "INFO")
+                set metadata "teamDisband" of player to now
+                wait 15 seconds
+                delete metadata "teamDisband" of player
+            else:
+                disbandTeam(player, getTeam(player))
+        else if arg-1 is "chat":
+            if arg-2 is not set:
+                if {playerData::%player%::teamChat} is not set:
+                    set {playerData::%player%::teamChat} to true
+                    sendTeamMessage(player, "&7You have &aenabled &7team chat.", "INFO")
+                else:
+                    delete {playerData::%player%::teamChat}
+                    sendTeamMessage(player, "&7You have &cdisabled &7team chat.", "INFO")
+                stop
+            else:
+                sendTeamChatMessage(player, "&f%player%&8: <#c3c3c3>%arg-2%")
+        else if arg-1 is "promote":
+            set {_p} to player(arg-2)
+            promotePlayer(player, {_p})
+        else if arg-1 is "demote":
+            set {_p} to player(arg-2)
+            demotePlayer(player, {_p})
+        else if arg-1 is "kick":
+            set {_p} to player(arg-2)
+            kickPlayer(player, {_p})
+        else if arg-1 is "leave":
+            leaveTeam(player)
+        else if arg-1 is "invite":
+            set {_p} to player(arg-2)
+            teamInvite(player, {_p})
+        else if arg-1 is "info":
+            if arg-2 is not set:
+                set {_team} to getTeam(player)
+            else:
+                set {_team} to arg-2
+            stop if passed(player, whether teamExists({_team}) = false, "&cThis team does not exist!") = true
+            teamInfo(player, {_team})
+        else if arg-1 is "rename":
+            renameTeam(player, getTeam(player), arg-2)
+        else if arg-1 is "pvp":
+            if getRankNumber(getPlayerTeamRank(player)) >= 2:
+                set {_team} to getTeam(player)
+                set {team::%{_team}%::pvp} to whether {team::%{_team}%::pvp} is false
+                if {team::%{_team}%::pvp} is true:
+                    sendTeamMessage(getTeamMembers({_team}), "&7Team PVP has been &aenabled&7.", "INFO")
+                if {team::%{_team}%::pvp} is false:
+                    sendTeamMessage(getTeamMembers({_team}), "&7Team PVP has been &cdisabled&7.", "INFO")
+
+on tab complete of "/team":
+    set tab completions for position 1 to "help", "join", "info", "invite", "promote", "demote", "kick", "leave", "rename", "chat", "create", "disband", "pvp" # Add glow back later
+    if tab arg-1 is "invite", "promote", "demote", or "kick":
+        set tab completions for position 2 to all players
+    if tab arg-1 is "join":
+        set tab completions for position 2 to indexes of {-teamInvite::%player%::*}
+    if tab arg-1 is "info":
+        set tab completions for position 2 to {teams::*}
+
+on damage:
+    if all:
+        getTeam(attacker) is set
+        getTeam(victim) is set
+        getTeam(attacker) = getTeam(victim)
+        {team::%getTeam(attacker)%::pvp} is false
+    then:
+        cancel event
+
+function sendTeamHelpMessage(p: player):
+    send " " to {_p}
+    sendTeamMessage({_p}, "&f/team help &8- <#c3c3c3>Shows this message.", "INFO")
+    sendTeamMessage({_p}, "&f/team create <name> &8- <#c3c3c3>Creates a team.", "INFO")
+    sendTeamMessage({_p}, "&f/team disband &8- <#c3c3c3>Disbands a team.", "INFO")
+    sendTeamMessage({_p}, "&f/team rename <name> &8- <#c3c3c3>Renames your team.", "NONE")
+    sendTeamMessage({_p}, "&f/team join <team> &8- <#c3c3c3>Joins a team.", "NONE")
+    sendTeamMessage({_p}, "&f/team leave &8- <#c3c3c3>Leaves a team.", "NONE")
+    sendTeamMessage({_p}, "&f/team info <team> &8- <#c3c3c3>Shows info about a team.", "NONE")
+    sendTeamMessage({_p}, "&f/team invite <player> &8- <#c3c3c3>Invites a player to your team.", "NONE")
+    sendTeamMessage({_p}, "&f/team kick <player> &8- <#c3c3c3>Kicks a player from your team.", "NONE")
+    sendTeamMessage({_p}, "&f/team promote <player> &8- <#c3c3c3>Promotes a player in your team.", "NONE")
+    sendTeamMessage({_p}, "&f/team demote <player> &8- <#c3c3c3>Demotes a player in your team.", "NONE")
+    sendTeamMessage({_p}, "&f/team pvp &8- <#c3c3c3>Toggles whether your teammates can hit each other.", "NONE")
+    send " " to {_p}
+
+on chat:
+    if {playerData::%player%::teamChat} is true:
+        cancel event
+        if getTeam(player) is not set:
+            sendTeamMessage(player, "&cYou are no longer in a team! You were put into normal chat.", "FAIL")
+            delete {playerData::%player%::teamChat}
+            stop
+        sendTeamChatMessage(player, "&f%player%&8: <#c3c3c3>%message%")
+
+function sendTeamChatMessage(p: player, message: string):
+    set {_members::*} to getTeamMembers(getTeam({_p}))
+    set {_rank} to getPlayerTeamRank({_p})
+    replace all "_" in {_rank} with "-"
+    replace all "s" in {_rank} with ""
+    sendTeamMessage({_members::*}, "&8[%{_rank} in title case%] %{_message}%", "INFO")
+
+function createTeam(p: player, name: string):
+    add {_name} to {teams::*}
+    set {team::%{_name}%::owner} to {_p}
+    set {playerData::%{_p}%::team} to {_name}
+    sendTeamMessage({_p}, "&7You have successfully created a team!", "SUCCESS")
+
+function disbandTeam(p: player, name: string):
+    set {_members::*} to getTeamMembers({_name})
+    sendTeamMessage({_members::*}, "&cYour team has been disbanded!", "FAIL")
+    sendTeamMessage({_p}, "&7You have disbanded the team &f%{_name}%&7!", "SUCCESS")
+    loop {_members::*}:
+        delete {playerData::%loop-value%::team}
+    delete {team::%{_name}%::owner}
+    delete {team::%{_name}%::admins::*}
+    delete {team::%{_name}%::seniors::*}
+    delete {team::%{_name}%::members::*}
+    delete {team::%{_name}%::home}
+    delete {team::%{_name}%::balance}
+    remove {_name} from {teams::*}
+
+function promotePlayer(promoter: player, p: player):
+    set {_teamPromoter} to getTeam({_promoter})
+    set {_team} to getTeam({_p})
+    set {_rankPromoter} to getRankNumber(getPlayerTeamRank({_promoter}))
+    set {_rank} to getRankNumber(getPlayerTeamRank({_p}))
+    if any:
+        passed({_promoter}, whether {_teamPromoter} != {_team}, "&cThis player is not in your team!") = true
+        passed({_promoter}, whether {_rankPromoter} < 3, "&cYou must be an admin to promote members!") = true
+        passed({_promoter}, whether {_rank} >= {_rankPromoter}, "&cYou cannot promote this player!") = true
+        passed({_promoter}, whether {_rank} >= 3, "&cYou cannot promote this player any further!") = true
+    then:
+        stop
+    if {_rank} = 2: # Senior -> Admin
+        remove {_p} from {team::%{_team}%::seniors::*}
+        add {_p} to {team::%{_team}%::admins::*}
+        sendTeamMessage(getTeamMembers({_team}), "&f%{_p}% &7has been promoted to &fAdmin&7!", "INFO")
+        stop
+    else if {_rank} = 1: # Member -> Senior
+        remove {_p} from {team::%{_team}%::members::*}
+        add {_p} to {team::%{_team}%::seniors::*}
+        sendTeamMessage(getTeamMembers({_team}), "&f%{_p}% &7has been promoted to &fSenior&7!", "INFO")
+        stop
+
+function demotePlayer(demoter: player, p: player):
+    set {_teamDemoter} to getTeam({_demoter})
+    set {_team} to getTeam({_p})
+    set {_rankDemoter} to getRankNumber(getPlayerTeamRank({_demoter}))
+    set {_rank} to getRankNumber(getPlayerTeamRank({_p}))
+    if any:
+        passed({_demoter}, whether {_teamDemoter} != {_team}, "&cThis player is not in your team!") = true
+        passed({_demoter}, whether {_rankDemoter} < 3, "&cYou must an admin to demote members!") = true
+        passed({_demoter}, whether {_rank} >= {_rankDemoter}, "&cYou cannot demote this player!") = true
+        passed({_demoter}, whether {_rank} = 1, "&cYou cannot demote this player any further!") = true
+    then:
+        stop
+    if {_rank} = 3: # Admin -> Senior
+        remove {_p} from {team::%{_team}%::admins::*}
+        add {_p} to {team::%{_team}%::seniors::*}
+        sendTeamMessage(getTeamMembers({_team}), "&f%{_p}% &7has been demoted to &fSenior&7!", "INFO")
+        stop
+    else if {_rank} = 2: # Admin -> Member
+        remove {_p} from {team::%{_team}%::seniors::*}
+        add {_p} to {team::%{_team}%::members::*}
+        sendTeamMessage(getTeamMembers({_team}), "&f%{_p}% &7has been demoted to &fMember&7!", "INFO")
+        stop
+
+function kickPlayer(kicker: player, p: player):
+    set {_teamKicker} to getTeam({_kicker})
+    set {_team} to getTeam({_p})
+    set {_rankKicker} to getRankNumber(getPlayerTeamRank({_kicker}))
+    set {_rankString} to getPlayerTeamRank({_p})
+    set {_rank} to getRankNumber({_rankString})
+    if any:
+        passed({_kicker}, whether {_teamKicker} != {_team}, "&cThis player is not in your team!") = true
+        passed({_kicker}, whether {_rankKicker} < 2, "&cYou must be an admin to kick members!") = true
+        passed({_kicker}, whether {_rankKicker} <= {_rank}, "&cYou cannot kick this person!") = true
+    then:
+        stop
+    # Remove player from all team lists
+    remove {_p} from {team::%{_team}%::%{_rankString}%::*}
+    delete {playerData::%{_p}%::team}
+    sendTeamMessage(getTeamMembers({_team}), "&f%{_p}% &7has been kicked from the team!", "INFO")
+    sendTeamMessage({_p}, "&7You were &ckicked &7from the team!", "FAIL")
+
+function teamInvite(inviter: player, p: player):
+    set {_teamInviter} to getTeam({_inviter})
+    set {_team} to getTeam({_p})
+    set {_rankInviter} to getRankNumber(getPlayerTeamRank({_inviter}))
+    if any:
+        passed({_inviter}, whether {_team} is set, "&cThis player is already in a team!") = true
+        passed({_inviter}, whether {_inviter} = {_p}, "&cYou cannot invite yourself!") = true
+        passed({_inviter}, whether {_rankInviter} = 1, "&cYou must be an admin to invite players!") = true
+        passed({_inviter}, whether size of getTeamMembers({_teamInviter}) = 3, "&cYour team is full!") = true
+    then:
+        stop
+    # this is a valid invite
+    set {-teamInvite::%{_p}%::%{_teamInviter}%} to now
+    sendTeamMessage(getTeamMembers({_teamInviter}), "&f%{_p}% &7has been invited to your team. They have &f60 seconds &7to accept.", "INFO")
+    sendTeamMessage({_p}, "&7You have been invited to join the team &f%{_teamInviter}%&7. You have &f60 seconds &7to accept.", "INFO")
+    wait 60 seconds
+    if {-teamInvite::%{_p}%::%{_teamInviter}%} is set:
+        sendTeamMessage({_teamInviter}, "&7The invite to &f%{_p}% &7has expired.", "INFO")
+        sendTeamMessage({_p}, "&7The invite from team &f%{_teamInviter}% &7has expired.", "INFO")
+        delete {-teamInvite::%{_p}%::%{_teamInviter}%}
+
+function joinTeam(p: player, team: string):
+    if any:
+        passed({_p}, whether getTeam({_p}) is set, "&cYou already have a team!") = true
+        passed({_p}, whether {-teamInvite::%{_p}%::%{_team}%} is not set, "&cYou do not have a pending invite from this team!") = true
+        passed({_p}, whether size of getTeamMembers({_team}) = 3, "&cThat team is full!") = true
+    then:
+        stop
+    # add player to team as member
+    add {_p} to {team::%{_team}%::members::*}
+    set {playerData::%{_p}%::team} to {_team}
+    sendTeamMessage(getTeamMembers({_team}), "&f%{_p}% &7has joined the team!", "INFO")
+    delete {-teamInvite::%{_p}%::%{_team}%}
+
+function leaveTeam(p: player):
+    set {_team} to getTeam({_p})
+    set {_rank} to getPlayerTeamRank({_p})
+    stop if passed({_p}, whether {_rank} = "owner", "&cYou cannot leave your own team. You must disband it.") = true
+    remove {_p} from {team::%{_team}%::%{_rank}%::*}
+    delete {playerData::%{_p}%::team}
+    sendTeamMessage(getTeamMembers({_team}), "&f%{_p}% &7has left the team!", "FAIL")
+    sendTeamMessage({_p}, "&7You have left the team.", "INFO")
+
+function teamInfo(p: player, team: string):
+    send " " to {_p}
+    sendTeamMessage({_p}, "&7Team info of &f%{_team}%&7:")
+    sendTeamMessage({_p}, "&7Team Kills: &f%getTeamStats({_team}, "kills") ? 0%")
+    sendTeamMessage({_p}, "&7Team Deaths: &f%getTeamStats({_team}, "deaths") ? 0%")
+    sendTeamMessage({_p}, "&7Owner: &f%{team::%{_team}%::owner}%")
+    sendTeamMessage({_p}, "&7Admins: &f%{team::%{_team}%::admins::*} ? "Nobody"%")
+    sendTeamMessage({_p}, "&7Seniors: &f%{team::%{_team}%::seniors::*} ? "Nobody"%")
+    sendTeamMessage({_p}, "&7Members: &f%{team::%{_team}%::members::*} ? "Nobody"%")
+    send " " to {_p}
+
+function renameTeam(p: player, team: string, newTeam: string):
+    set {_rank} to getRankNumber(getPlayerTeamRank({_p}))
+    if any:
+        passed({_p}, whether {_rank} < 4, "&cYou cannot rename a team you don't own!") = true
+        passed({_p}, whether teamExists({_newTeam}) = true, "&cThere is already a team with this name!") = true
+        passed({_p}, whether {_newTeam} contains " ", "&cTeam name cannot contain spaces.") = true
+        passed({_p}, whether {_newTeam} is not alphanumeric, "&cInvalid characters in team name.") = true
+        passed({_p}, whether {blacklistedTeamNames::*} contains {_newTeam}, "&cYou cannot use this name.") = true
+        passed({_p}, whether length of {_newTeam} < 3, "&cTeam name must be between 3 and 20 characters.") = true
+        passed({_p}, whether length of {_newTeam} > 20, "&cTeam name must be between 3 and 20 characters.") = true
+    then:
+        stop
+    add {_newTeam} to {teams::*}
+    set {team::%{_newTeam}%::owner} to {team::%{_team}%::owner}
+    set {team::%{_newTeam}%::admins::*} to {team::%{_team}%::admins::*}
+    set {team::%{_newTeam}%::seniors::*} to {team::%{_team}%::seniors::*}
+    set {team::%{_newTeam}%::members::*} to {team::%{_team}%::members::*}
+    loop getTeamMembers({_team}):
+        set {playerData::%loop-value%::team} to {_newTeam}
+    delete {team::%{_team}%::owner}
+    delete {team::%{_team}%::admins::*}
+    delete {team::%{_team}%::seniors::*}
+    delete {team::%{_team}%::members::*}
+    remove {_team} from {teams::*}
+    sendTeamMessage(getTeamMembers({_newTeam}), "&7Your team has been renamed to &f%{_newTeam}%&7!", "SUCCESS")
+
+function getTeamStats(team: string, stat: string) :: number:
+    locally suppress starting with expression warnings
+    loop getTeamMembers({_team}):
+        add {%{_stat}%::%loop-value%} to {_total}
+    return {_total}
+
+function sendTeamMessage(p: players, t: text, type: string = "NONE"):
+    send "<#deb850>&lTEAM &8• &7%{_t}%" to {_p::*}
+    play sound "block.note_block.bass" to {_p::*} if {_type} = "FAIL"
+    play sound "item.bone_meal.use", "block.wood.break" to {_p::*} if {_type} = "INFO"
+    play sound "block.note_block.pling" at pitch 2 to {_p::*} if {_type} = "SUCCESS"
+
+function teamChestItem() :: item:
+    set {_i} to trapped chest named "&c&lTEAM CHEST"
+    return {_i}
+
+function getTeam(p: offlineplayer) :: string:
+    return {playerData::%{_p}%::team}
+
+function getTeamMembers(name: string) :: offlineplayers:
+    add {team::%{_name}%::owner} to {_ret::*}
+    loop ("admins", "seniors", "members"):
+        add {team::%{_name}%::%loop-value%::*} to {_ret::*}
+    return {_ret::*}
+
+function getPlayerTeamRank(p: player) :: string:
+    set {_team} to getTeam({_p})
+    return "owner" if {team::%{_team}%::owner} = {_p}
+    loop ("admins", "seniors", "members"):
+        return loop-value if {team::%{_team}%::%loop-value%::*} contains {_p}
+    return "NONE"
+
+function getRankNumber(rank: string) :: integer:
+    return 4 if {_rank} = "owner"
+    return 3 if {_rank} = "admins"
+    return 2 if {_rank} = "seniors"
+    return 1 if {_rank} = "members"
+    return 0
+
+function teamExists(name: string) :: boolean:
+    return false if {team::%{_name}%::owner} is not set else true
+
+function passed(p: player, condition: boolean, error: string) :: boolean:
+    sendTeamMessage({_p}, {_error}, "FAIL") if {_condition} = true
+    return {_condition}

@@ -1,0 +1,162 @@
+###
+# Customizable Scoreboard Skript
+#
+# Customizable scoreboard system with GUI-based settings, allowing players to
+# toggle stats and server info, with automatic real-time updates.
+#
+# Requires:
+# - Skript
+# - SkBee
+# - skript-gui
+# - skript-placeholder
+# - CJHUtils.sk
+#
+# author: CJH (https://discord.gg/5Dr4XR5Znj)
+# version: 1.0
+# license: Noncommercial (Do NOT resell or distribute this without permission)
+###
+
+using script reflection
+
+on load:
+    delete {-scoreboard::*}
+    set {-scoreboard::id::*} to "aura", "kd", "bits", "cash", "level", "map" and "joins"
+    set {-scoreboard::statNames::*} to "<#ee6666>👑 &fK/D", "<#50EDFF>✦ &fBits", "<#F56613>💲 &fCash" and "&d۞ &fLevel"
+    set {-scoreboard::dialogs::*} to "<#ee6666>K/D&r","<#50EDFF>Bits&r", "<#F56613>Cash&r", "&dLevel&r", "<#07FF6E>Map&r" and "<#077FFF>Joins&R"
+    set {-scoreboard::default::0} to minimessage from "<gradient:#EA2545:#E76E63><b>ESTONIC</b> <gray><b>◆</b> <#EA2545>S1"
+    set {-scoreboard::default::1} to "    &f➥ [[elo]] &7(&f/aura&7)"
+    set {-scoreboard::default::2} to "    <#EA2545>estonic.minekeep.gg"
+
+    set {-scoreboard::stats::1} to " <#ee6666>👑 &fK/D: <#ee6666>[[sk_killdeath]]"
+    set {-scoreboard::stats::2} to " <#07FF6E>💲 &fCash: <#07FF6E>[[sk_bank]]"
+    set {-scoreboard::stats::3} to " <#50EDFF>✦ &fBits: <#50EDFF>[[sk_Bits]]"
+    set {-scoreboard::stats::4} to " &e۞ &fLevel: [[sk_xpscoreboard]]"
+
+    set {-scoreboard::server::1} to " &d⌚ <#E7E7E7>Map Reset: &d[[sk_MapReset]]"
+    set {-scoreboard::server::2} to " <#077FFF>👤 <#E7E7E7>Joins: <#077FFF>[[server_unique_joins]]"
+
+local function checkNext(player: player) :: integer:
+    loop 15 times:
+        if line (loop-iteration) of {_player}'s board is set:
+            continue
+        return loop-value
+
+local function getLine(player: player, id: string) :: integer:
+    return {playerData::%{_player}%::scoreboard::line::%{_id}%}
+
+function updateFullBoard(player: player):
+    clear fastboard of {_player}
+    set title of {_player}'s board to {-scoreboard::default::0}
+    set line 1 of {_player}'s board to {-scoreboard::default::1}
+    if any of {playerData::%{_player}%::scoreboard::stats::*} is true:
+        set line checkNext({_player}) of {_player}'s board to ""
+    loop {-scoreboard::stats::*}:
+        set {_idx} to loop-iteration
+        set {_idIndex} to {_idx} + 1
+        set {_id} to {-scoreboard::id::%{_idIndex}%}
+        if {playerData::%{_player}%::scoreboard::stats::%{_idx}%} is true:
+            set line checkNext({_player}) of {_player}'s board to loop-value
+            set {playerData::%{_player}%::scoreboard::line::%{_id}%} to checkNext({_player})-1
+    if any of {playerData::%{_player}%::scoreboard::server::*} is true:
+        set line checkNext({_player}) of {_player}'s board to ""
+    loop {-scoreboard::server::*}:
+        set {_idx} to loop-iteration
+        set {_idIndex} to {_idx} + 6
+        set {_id} to {-scoreboard::id::%{_idIndex}%}
+        if {playerData::%{_player}%::scoreboard::server::%{_idx}%} is true:
+            set line checkNext({_player}) of {_player}'s board to loop-value
+            set {playerData::%{_player}%::scoreboard::line::%{_id}%} to checkNext({_player})-1
+    set line checkNext({_player}) of {_player}'s board to ""
+    set line checkNext({_player}) of {_player}'s board to {-scoreboard::default::2}
+    # Handling custom resolvers
+    loop 15 times:
+        if line loop-iteration of {_player}'s board is set:
+            set {_text::*} to (line loop-iteration of {_player}'s board) split at "["
+            set {_text::*} to {_text::3} split at "]"
+            replace all ("[[" + {_text::1} + "]]") with formatted (the placeholder {_text::1} of {_player}) in (line loop-iteration of {_player}'s board)
+
+function scoreboardGUI(p: player):
+    create a gui with virtual chest inventory with 6 rows named "&8ℹ Scoreboard Settings":
+        format gui (integers between 0 and 8) and (integers between 45 and 53) with black stained glass pane named "" without tooltip
+        format gui slot 4 with nether star named "&6ℹ Customize!" with lore "&f➥ &7Click items below to toggle which stat" and "&7you'd like to have on your scoreboard"
+        format gui slot (integers between 9 and 19), 25 and 26 with light gray stained glass pane named "&cℹ Statistic Selection" with lore "&f➥ &7Toggle which stats you want to see"
+        set {_statNames::*} to "<#ee6666>👑 &fK/D", "<#50EDFF>✦ &fBits", "<#F56613>💲 &fCash" and "&d۞ &fLevel"
+        set {_statSlots::*} to 20, 21, 22, 23 and 24
+        loop 4 times:
+            set {_index} to loop-iteration
+            set {_slot} to {_statSlots::%loop-number%}
+            if {playerData::%{_p}%::scoreboard::stats::%{_index}%} is true:
+                format gui slot {_slot} with chest minecart named "%{_statNames::%loop-number%}%" with lore "&7Status: &a&nEnabled" and "&f➥ &7Click to &cdisable":
+                    delete {playerData::%{_p}%::scoreboard::stats::%{_index}%}
+                    #send "%{-constants::prefix}% &7Disabled &f%{_statNames::%{_index}%}% &7stat" to {_p}
+                    play sound "minecraft:ui.button.click" to {_p}
+                    set metadata "scoreboard;changed" of player to now
+                    updateFullBoard({_p})
+                    scoreboardGUI({_p})
+            else:
+                format gui slot {_slot} with minecart named "%{_statNames::%loop-number%}%" with lore "&7Status: &c&nDisabled" and "&f➥ &7Click to &aenable":
+                    set {playerData::%{_p}%::scoreboard::stats::%{_index}%} to true
+                    #send "%{-constants::prefix}% &7Enabled &f%{_statNames::%{_index}%}% &7stat" to {_p}
+                    play sound "minecraft:ui.button.click" to {_p}
+                    set metadata "scoreboard;changed" of player to now
+                    updateFullBoard({_p})
+                    scoreboardGUI({_p})
+        format gui slot 27, 28, (integers between 34 and 44) with light gray stained glass pane named "&9ℹ Server Selection" with lore "&f➥ &7Toggle server information display"
+        set {_serverNames::*} to "<#07FF6E>⌚ &fMap Reset" and "<#077FFF>👤 &fPlayer Count"
+        set {_serverSlots::*} to 29 and 30
+        loop twice:
+            set {_index} to loop-iteration
+            set {_slot} to {_serverSlots::%loop-number%}
+            if {playerData::%{_p}%::scoreboard::server::%loop-iteration%} is true:
+                format gui slot {_slot} with chest minecart named "&a&l%{_serverNames::%loop-number%}%" with lore "&7Status: &a&nEnabled" and "&f➥ &7Click to &cdisable":
+                    delete {playerData::%{_p}%::scoreboard::server::%{_index}%}
+                    #send "%{-constants::prefix}% &7Disabled &f%{_serverNames::%{_index}%}% &7stat" to {_p}
+                    play sound "minecraft:ui.button.click" to {_p}
+                    set metadata "scoreboard;changed" of player to now
+                    updateFullBoard({_p})
+                    scoreboardGUI({_p})
+            else:
+                format gui slot {_slot} with minecart named "&c&l%{_serverNames::%loop-number%}%" with lore "&7Status: &c&nDisabled" and "&f➥ &7Click to &aenable":
+                    set {playerData::%{_p}%::scoreboard::server::%{_index}%} to true
+                    #send "%{-constants::prefix}% &7Enabled &f%{_serverNames::%{_index}%}% &7stat" to {_p}
+                    play sound "minecraft:ui.button.click" to {_p}
+                    set metadata "scoreboard;changed" of player to now
+                    updateFullBoard({_p})
+                    scoreboardGUI({_p})
+        format gui slot 31,32 and 33 with minecart named "" without tooltip
+        format gui slot 49 with {-close}:
+            close {_p}'s inventory
+        format gui slot 48 with emerald named "&aEnable All" with lore "&e➥ Click to enable all stats":
+            loop 5 times:
+                set {playerData::%{_p}%::scoreboard::stats::%loop-number%} to true
+            loop 2 times:
+                set {playerData::%{_p}%::scoreboard::server::%loop-number%} to true
+            send "%{-constants::prefix}% &7Enabled all scoreboard stats" to {_p}
+            play sound "minecraft:ui.button.click" to {_p}
+            set metadata "scoreboard;changed" of player to now
+            updateFullBoard({_p})
+            scoreboardGUI({_p})
+        format gui slot 50 with redstone named "&cDisable All" with lore "&e➥ Click to disable all stats":
+            play sound "minecraft:ui.button.click" to {_p}
+            delete {playerData::%{_p}%::scoreboard::stats::*}
+            delete {playerData::%{_p}%::scoreboard::server::*}
+            send "%{-constants::prefix}% &7Disabled all scoreboard stats" to {_p}
+            set metadata "scoreboard;changed" of player to now
+            updateFullBoard({_p})
+            scoreboardGUI({_p})
+
+        open last gui to {_p}
+
+every second:
+    loop players:
+        updateFullBoard(loop-value)
+
+# Joins board
+on first join:
+    set {playerData::%player%::scoreboard::server::*} to true
+    set {playerData::%player%::scoreboard::stats::*} to true
+
+command /scoreboard:
+    aliases: sc, scoreboards
+    trigger:
+        scoreboardGUI(player)

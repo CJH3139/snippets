@@ -1,0 +1,548 @@
+###
+# Punishment Skript
+#
+# A fully configurable punishment system with GUI-based moderation, structured
+# infractions, and automated escalation, allowing staff to efficiently manage
+# warnings, mutes, and bans with detailed tracking.
+#
+# Requires:
+# - Skript
+# - SkBee
+# - skript-gui
+# - CJHUtils.sk
+#
+# author: CJH (https://discord.gg/5Dr4XR5Znj)
+# version: 1.0
+# license: Noncommercial (Do NOT resell or distribute this without permission)
+###
+
+###
+Infractions have the following components:
+    - Issuer
+    - Time
+    - Punishment Type
+    - Reason
+    - Duration
+    - Category
+
+⛨
+###
+
+options:
+    m: <##5bc78c>
+    s: <##46ab4e>
+    c: <##c3c3c3>
+
+command /clearchat:
+    permission: staff
+    trigger:
+        set {_str} to ""
+        loop 1000 times:
+            add random element out of "&c%nl%", "&6%nl%", "&e%nl%", "&a%nl%", "&b%nl%", "&3%nl%", "&5%nl%", "&d%nl%", "&f%nl%" to {_str}
+        broadcast {_str}
+        broadcast "%nl%{@s}⛨ {@c}Chat has been cleared.%nl%"
+
+struct Punishment:
+    type: string
+    duration: timespan
+    category: string
+struct Reason:
+    name: string
+    punishments: structs
+
+local function Punishment(type: string, duration: timespan, category: string) :: struct:
+    return Punishment struct instance:
+        type: {_type}
+        duration: {_duration}
+        category: {_category}
+local function Reason(name: string, punishments: structs) :: struct:
+    return Reason struct instance:
+        name: {_name}
+        punishments: {_punishments::*}
+
+on load:
+    # Register punishments.
+    # ==========================================
+    # GENERIC WARNINGS (global)
+    # ==========================================
+    set {_warnChat} to Punishment("warn", forever, "chat")
+    set {_warnGame} to Punishment("warn", forever, "game")
+
+
+    # ==========================================
+    # RULE 1 — Hacking / Unfair Advantages
+    # ==========================================
+    set {_ban::hacking::1} to Punishment("ban", 7 days, "game")
+    set {_ban::hacking::2} to Punishment("ban", 14 days, "game")
+    set {_ban::hacking::3} to Punishment("ban", 30 days, "game")
+    set {_ban::hacking::final} to Punishment("ban", forever, "game")
+
+    set {_reason::game::hacking} to Reason("Hacking/Unfair Advantages", ({_ban::hacking::*}))
+
+
+    # ==========================================
+    # RULE 2 — Trading / IRL Scamming
+    # ==========================================
+    set {_ban::trading::final} to Punishment("ban", forever, "game")
+
+    set {_reason::game::trading} to Reason("Trading/IRL Scamming", ({_ban::trading::*}))
+
+
+    # ==========================================
+    # RULE 3 — Racism / Discrimination
+    # ==========================================
+    set {_mute::racism::1} to Punishment("mute", 24 hours, "chat")
+    set {_mute::racism::2} to Punishment("mute", 7 days, "chat")
+    set {_mute::racism::3} to Punishment("mute", 14 days, "chat")
+    set {_mute::racism::final} to Punishment("mute", forever, "chat")
+
+    set {_reason::chat::racism} to Reason("Racism/Discrimination", ({_mute::racism::*}))
+
+
+    # ==========================================
+    # RULE 4 — Political / Religious Topics
+    # ==========================================
+    set {_mute::politics::1} to Punishment("mute", 12 hours, "chat")
+    set {_mute::politics::2} to Punishment("mute", 1 day, "chat")
+    set {_mute::politics::3} to Punishment("mute", 3 days, "chat")
+    set {_mute::politics::4} to Punishment("mute", 7 days, "chat")
+    set {_mute::politics::final} to Punishment("mute", forever, "chat")
+
+    set {_reason::chat::politics} to Reason("Political/Religious Topics", ({_mute::politics::*}))
+
+
+    # ==========================================
+    # RULE 5 — Advertising
+    # ==========================================
+    set {_mute::advertising::1} to Punishment("mute", 7 days, "chat")
+    set {_mute::advertising::final} to Punishment("mute", forever, "chat")
+
+    set {_reason::chat::advertising} to Reason("Advertising", ({_mute::advertising::*}))
+
+
+    # ==========================================
+    # RULE 6 — Threats / Encouraging Self Harm
+    # ==========================================
+    set {_mute::threats::1} to Punishment("mute", 12 hours, "chat")
+    set {_mute::threats::2} to Punishment("mute", 1 day, "chat")
+    set {_mute::threats::3} to Punishment("mute", 3 days, "chat")
+    set {_mute::threats::4} to Punishment("mute", 7 days, "chat")
+    set {_mute::threats::final} to Punishment("mute", forever, "chat")
+
+    set {_reason::chat::threats} to Reason("Threats/Encouraging Self Harm", ({_mute::threats::*}))
+
+
+    # RULE 6 — Leaking Personal Info
+    set {_mute::leaking::1} to Punishment("mute", 30 days, "chat")
+    set {_mute::leaking::2} to Punishment("mute", forever, "chat")
+
+    set {_reason::chat::leaking} to Reason("Leaking Personal Info", ({_mute::leaking::*}))
+
+
+    # RULE 6 — Server Attacks
+    set {_ban::serverattacks::1} to Punishment("ban", forever, "game")
+
+    set {_reason::game::serverattacks} to Reason("Server Attacks", ({_ban::serverattacks::*}))
+
+
+    # ==========================================
+    # RULE 7 — Non-English Chat
+    # ==========================================
+    set {_mute::nonenglish::1} to Punishment("mute", 10 minutes, "chat")
+    set {_mute::nonenglish::2} to Punishment("mute", 1 hour, "chat")
+    set {_mute::nonenglish::3} to Punishment("mute", 3 hours, "chat")
+    set {_mute::nonenglish::4} to Punishment("mute", 12 hours, "chat")
+
+    set {_reason::chat::nonenglish} to Reason("Non English", ({_warnChat}, {_mute::nonenglish::*}))
+
+
+    # ==========================================
+    # RULE 8 — Harassment
+    # ==========================================
+    set {_mute::harassment::1} to Punishment("mute", 3 hours, "chat")
+    set {_mute::harassment::2} to Punishment("mute", 12 hours, "chat")
+    set {_mute::harassment::3} to Punishment("mute", 1 day, "chat")
+    set {_mute::harassment::4} to Punishment("mute", 3 days, "chat")
+
+    set {_reason::chat::harassment} to Reason("Harassment", ({_warnChat}, {_mute::harassment::*}))
+
+
+    # RULE 8 — Toxicity
+    set {_mute::toxicity::1} to Punishment("mute", 1 hour, "chat")
+    set {_mute::toxicity::2} to Punishment("mute", 6 hours, "chat")
+    set {_mute::toxicity::3} to Punishment("mute", 12 hours, "chat")
+    set {_mute::toxicity::4} to Punishment("mute", 2 days, "chat")
+
+    set {_reason::chat::toxicity} to Reason("Toxicity", ({_warnChat}, {_mute::toxicity::*}))
+
+
+    # ==========================================
+    # RULE 9 — NSFW
+    # ==========================================
+    set {_mute::nsfw::1} to Punishment("mute", 2 hours, "chat")
+    set {_mute::nsfw::2} to Punishment("mute", 6 hours, "chat")
+    set {_mute::nsfw::3} to Punishment("mute", 12 hours, "chat")
+    set {_mute::nsfw::4} to Punishment("mute", 1 day, "chat")
+    set {_mute::nsfw::5} to Punishment("mute", 3 days, "chat")
+
+    set {_reason::chat::nsfw} to Reason("NSFW", ({_mute::nsfw::*}))
+
+
+    # ==========================================
+    # RULE 10 — In-game Scamming
+    # ==========================================
+    set {_warn::ingamescam::1} to Punishment("warn", forever, "game")
+
+    set {_reason::game::ingamescam} to Reason("In-game Scamming", ({_warn::ingamescam::*}))
+
+
+    # ==========================================
+    # RULE 11 — Exploiting
+    # ==========================================
+    set {_ban::exploiting::1} to Punishment("ban", 12 hours, "game")
+    set {_ban::exploiting::2} to Punishment("ban", 2 days, "game")
+    set {_ban::exploiting::3} to Punishment("ban", 7 days, "game")
+    set {_ban::exploiting::4} to Punishment("ban", forever, "game")
+
+    set {_reason::game::exploiting} to Reason("Exploiting", ({_ban::exploiting::*}))
+
+
+    # ==========================================
+    # RULE 12 — Spam
+    # ==========================================
+    set {_mute::spam::1} to Punishment("mute", 10 minutes, "chat")
+    set {_mute::spam::2} to Punishment("mute", 1 hour, "chat")
+    set {_mute::spam::3} to Punishment("mute", 4 hours, "chat")
+    set {_mute::spam::4} to Punishment("mute", 1 day, "chat")
+
+    set {_reason::chat::spam} to Reason("Spam", ({_warnChat}, {_mute::spam::*}))
+
+
+    # ==========================================
+    # RULE 17 — Encouraging People to Leave
+    # ==========================================
+    set {_mute::leaving::1} to Punishment("mute", 2 hours, "chat")
+    set {_mute::leaving::2} to Punishment("mute", 6 hours, "chat")
+    set {_mute::leaving::3} to Punishment("mute", 12 hours, "chat")
+    set {_mute::leaving::4} to Punishment("mute", 1 day, "chat")
+    set {_mute::leaving::5} to Punishment("mute", 3 days, "chat")
+
+    set {_reason::chat::leaving} to Reason("Encouraging People To Leave", ({_mute::leaving::*}))
+    # Add reasons to the menus.
+    delete {-punishment::reasons::chat::*}
+    delete {-punishment::reasons::game::*}
+    loop "chat", "game":
+        loop {_reason::%loop-value-1%::*}:
+            add loop-value-2 to {-punishment::reasons::%loop-value-1%::*}
+
+
+function punishmentGui(p: player, o: offlineplayer, menu: string, bool: boolean = true, resetCustom: boolean = true):
+    play sound "item.book.page_turn" with seed 2 at pitch 2 to {_p}
+    set {_i} to black stained glass pane
+    hide {_i}'s entire tooltip
+    if {_menu} is "main":
+        create a gui with virtual chest inventory with 3 rows named "Punish - %{_o}%"
+        open last gui for {_p}
+        edit last gui:
+            loop integers between 0 and 26:
+                make gui slot loop-value with {_i}
+                if all:
+                    mod(loop-counter, 2) = 0
+                    {_bool} is true
+                then:
+                    play sound "block.calcite.step" at volume 0.1 to {_p}
+                    wait 1 tick
+            make gui slot 11 with name tag named "{@s}Chat Infractions" with lore "%nl%{@c}Anything related to chat.":
+                punishmentGui({_p}, {_o}, "chat")
+                stop
+            play sound "block.amethyst_block.step" at volume 0.5 to {_p}
+            wait 1 tick
+            make gui slot 13 with skull of {_o} named "{@m}%name of {_o}%"
+            play sound "block.amethyst_block.step" at volume 0.5 to {_p}
+            wait 1 tick
+            make gui slot 15 with anvil named "{@s}Gameplay Infractions" with lore "%nl%{@c}Anything related to stuff that %nl%{@c}happens ingame, like hacking.":
+                punishmentGui({_p}, {_o}, "game")
+                stop
+            play sound "block.amethyst_block.step" at volume 0.5 to {_p}
+            wait 1 tick
+            make gui slot 22 with redstone block named "&cCustom Punishment":
+                punishmentGui({_p}, {_o}, "custom")
+    else if {_menu} is "chat" or "game":
+        create a gui with virtual chest inventory with 5 rows named "Punish - %{_o}% - %{_menu} in title case%":
+            make gui slot (integers between 0 and 8), (integers between 36 and 44) with {_i}
+        open last gui for {_p}
+        edit last gui:
+            set {_prior} to size of {punishments::%{_o}%::*} where [{punishments::%{_o}%::%input%::category} = {_menu} or "none"]
+            make gui slot 4 with knowledge book named "{@m}%name of {_o}%" with lore "{@c}Total %{_menu} in title case% Infractions&8: {@s}%{_prior}%"
+            play sound "block.amethyst_block.step" at volume 0.5 to {_p}
+            loop {-punishment::reasons::%{_menu}%::*}:
+                wait 1 tick
+                play sound "block.calcite.step" at volume 0.1 to {_p}
+                set {_name} to "&f%loop-value->name in upper case%"
+                copy {punishments::%{_o}%::*} into {_playerPunishments::%{_o}%::*}
+                delete {_playerPunishments::%{_o}%::counter}
+                set {_prior} to size of {_playerPunishments::%{_o}%::*} where [{_playerPunishments::%{_o}%::%input%::reason} = {_name}]
+                set {_punishments::*} to loop-value->punishments
+                set {_index} to min({_prior}+1, size of {_punishments::*})
+                set {_punishment} to {_punishments::%{_index}%}
+                set {_punishmentType} to ({_punishment}->type) in upper case
+                set {_punishmentTime} to formatTimespan({_punishment}->duration)
+                set {_c} to 8 + loop-counter
+                set {_i} to book named {_name} with lore "%nl%{@c}Punishment&8: {@s}%{_punishmentType}% {@c}[{@s}%{_punishmentTime}%{@c}]%nl%{@c}Prior Offenses&8: {@s}%{_prior}%"
+                make gui slot (8 + loop-counter) with {_i}:
+                    if all:
+                        {_punishmentType} = "MUTE"
+                        isMuted({_o}) = true
+                    then:
+                        errorItem({_p}, {_c}, {_i}, "This player is already muted!")
+                        stop
+                    if all:
+                        {_punishmentType} = "BAN"
+                        isBanned({_o}) = true
+                    then:
+                        errorItem({_p}, {_c}, {_i}, "This player is already banned!")
+                        stop
+                    punishPlayer({_p}, {_o}, {_name}, {_punishment}, {_prior}+1)
+                    close {_p}'s inventory
+            make gui slot 36 with arrow named "&cGo back":
+                punishmentGui({_p}, {_o}, "main", false)
+    else if {_menu} is "custom":
+        if {_resetCustom} is true:
+            delete metadata "customPunishmentType" of {_p}
+            delete metadata "customPunishmentReason" of {_p}
+            delete metadata "customPunishmentDuration" of {_p}
+        create a gui with virtual chest inventory with 3 rows named "Punish - %{_o}% - Custom":
+            make gui slot (integers between 0 and 26) with {_i}
+        open last gui for {_p}
+        edit last gui:
+            make gui slot 4 with knowledge book named "{@m}%name of {_o}%"
+            make gui slot 18 with arrow named "&cGo back":
+                punishmentGui({_p}, {_o}, "main", false)
+            set {_type} to (metadata "customPunishmentType" of {_p}) ? "WARN"
+            loop "WARN", "MUTE", "BAN":
+                if (loop-value = {_type}):
+                    add "<#7592d1> -> <#c3c3c3>%loop-value%" to {_lore::*}
+                else:
+                    add "<#7c8fc4>    %loop-value%" to {_lore::*}
+            make gui slot 10 with bamboo sign named "{@s}Punishment Type:" with lore nl, {_lore::*}:
+                if {_type} is "WARN":
+                    set metadata "customPunishmentType" of {_p} to "MUTE"
+                else if {_type} is "MUTE":
+                    set metadata "customPunishmentType" of {_p} to "BAN"
+                else if {_type} is "BAN":
+                    set metadata "customPunishmentType" of {_p} to "WARN"
+                punishmentGui({_p}, {_o}, "custom", true, false)
+                play sound "minecraft:block.dispenser.dispense" to {_p}
+            set {_reason} to (metadata "customPunishmentReason" of {_p}) ? "No reason provided."
+            make gui slot 12 with warped sign named "{@s}Punishment Reason:" with lore nl, "{@c}%{_reason}%":
+                play sound "minecraft:block.dispenser.dispense" to {_p}
+                set {_reasonGui} to a new anvil gui
+                set anvil gui result item of {_reasonGui} to paper named " "
+                set anvil gui text input of {_reasonGui} to "Enter a reason..."
+                when anvil gui {_reasonGui} gets closed:
+                    set {_customReason} to anvil gui text input of {_reasonGui}
+                    set metadata "customPunishmentReason" of {_p} to {_customReason}
+                    wait 1 tick
+                    punishmentGui({_p}, {_o}, "custom", true, false)
+                when anvil gui {_reasonGui} gets clicked:
+                    set {_customReason} to anvil gui text input of {_reasonGui}
+                    set metadata "customPunishmentReason" of {_p} to {_customReason}
+                    punishmentGui({_p}, {_o}, "custom", true, false)
+                open anvil gui {_reasonGui} to {_p}
+            set {_duration} to (metadata "customPunishmentDuration" of {_p}) ? "1d12h"
+            make gui slot 14 with cherry sign named "{@s}Punishment Duration:" with lore nl, "{@c}%{_duration}%":
+                play sound "minecraft:block.dispenser.dispense" to {_p}
+                set {_durationGui} to a new anvil gui
+                set anvil gui result item of {_durationGui} to paper named " "
+                set anvil gui text input of {_durationGui} to "Enter a duration..."
+                when anvil gui {_durationGui} gets closed:
+                    set {_customDuration} to anvil gui text input of {_durationGui}
+                    set metadata "customPunishmentDuration" of {_p} to {_customDuration}
+                    wait 1 tick
+                    punishmentGui({_p}, {_o}, "custom", true, false)
+                when anvil gui {_durationGui} gets clicked:
+                    set {_customDuration} to anvil gui text input of {_durationGui}
+                    set metadata "customPunishmentDuration" of {_p} to {_customDuration}
+                    punishmentGui({_p}, {_o}, "custom", true, false)
+                open anvil gui {_durationGui} to {_p}
+            set {_type} to (metadata "customPunishmentType" of {_p}) ? "WARN"
+            set {_reason} to (metadata "customPunishmentReason" of {_p}) ? "No reason provided."
+            set {_duration} to (metadata "customPunishmentDuration" of {_p}) ? "1d12h"
+            make gui slot 16 with emerald block named "{@m}Punish %{_o}%" with lore nl, "{@s}Type: {@c}%{_type}%%nl%{@s}Reason: {@c}%{_reason}%%nl%{@s}Duration: {@c}%{_duration}%":
+                set {_realDuration} to unformatTimespan({_duration})
+                set {_realDuration} to forever if {_type} = "WARN"
+                if {_realDuration} is not set:
+                    error({_p}, "Invalid duration!")
+                    stop
+                set {_punishment} to Punishment struct instance:
+                    type: {_type}
+                    duration: {_realDuration}
+                    category: "custom"
+                punishPlayer({_p}, {_o}, "&f%{_reason} in upper case%", {_punishment}, 1)
+                close {_p}'s inventory
+
+command /consoleban <o: player> <reason: string> <duration: string>:
+    executable by: console
+    permission: op
+    trigger:
+        set {_realDuration} to unformatTimespan({_duration})
+        if {_realDuration} is not set:
+            send "&cInvalid timespan!" to console
+            stop
+        set {_punishment} to Punishment struct instance:
+            type: "BAN"
+            duration: {_realDuration}
+            category: "custom"
+        punishPlayer(offlineplayer("CONSOLE"), {_o}, "&f%{_reason} in upper case%", {_punishment}, 1)
+
+function punishPlayer(p: offlineplayer, o: offlineplayer, reason: string, punishment: struct, offenses: integer):
+    set {punishments::%{_o}%::counter} to {punishments::%{_o}%::counter}+1
+    set {_id} to {punishments::%{_o}%::counter}
+    set {_time} to now
+    set {_type} to {_punishment}->type
+    set {_duration} to {_punishment}->duration
+    set {_category} to {_punishment}->category
+    set {punishments::%{_o}%::%{_id}%::issuer} to {_p}
+    set {punishments::%{_o}%::%{_id}%::time} to {_time}
+    set {punishments::%{_o}%::%{_id}%::type} to {_type}
+    set {punishments::%{_o}%::%{_id}%::reason} to {_reason}
+    set {punishments::%{_o}%::%{_id}%::duration} to {_duration}
+    set {punishments::%{_o}%::%{_id}%::category} to {_category}
+    set {punishments::%{_o}%::%{_id}%} to {_id}
+    set {_msg} to "warned" if {_type} = "warn"
+    set {_msg} to "muted" if {_type} = "mute"
+    set {_msg} to "banned" if {_type} = "ban"
+    set {_durationText} to " {@c}for {@s}%formatTimespan({_duration})% " if {_duration} is not forever else " "
+    send "{@s}⛨ {@m}%{_o}% {@c}has been {@s}%{_msg}% {@c}by {@m}%{_p}%%{_durationText}%{@c}due to {@s}%{_reason}% (%{_offenses}%)" to all players where [input has permission "staff"]
+    play sound "block.respawn_anchor.deplete" at volume 0.5 to all players where [input has permission "staff"], {_o}
+    send "{@s}⛨ {@m}You {@c}have been {@s}%{_msg}% {@c}by {@m}%{_p}%%{_durationText}%{@c}due to {@s}%{_reason}% (%{_offenses}%)" to {_o} if {_o} != {_p}
+    if {_type} = "ban":
+        set {_time-left} to "%nl% &6⌚ &7You will be unbanned in &f%formatTimespan(time until ({_duration} from {_time}))%&7. %nl%" if {_duration} is set
+        kick {_o} due to "%nl%%nl% &4⚠ &cYou have been banned by a staff member. %nl%%nl% <#91a0ff>◇ &7Reason&8: &f%{_reason}% %nl% <#91a0ff>◇ &7Duration&8: &f%{_duration} ? "FOREVER"% %nl% <#91a0ff>◇ &7Date&8: &f%{_time} formatted human-readable as "MM/dd/yy, h:mm a"% %nl%%{_time-left} ? ""%"
+
+function getPunishmentHistory(p: player, o: offlineplayer):
+    send " " to {_p}
+    if size of {punishments::%{_o}%::*} > 0:
+        send "{@c}Punishment history for {@m}%{_o}%&8:" to {_p}
+        loop {punishments::%{_o}%::*}:
+            loop-index is not "counter"
+            set {_issuer} to {punishments::%{_o}%::%loop-value%::issuer}
+            set {_time} to {punishments::%{_o}%::%loop-value%::time}
+            set {_type} to {punishments::%{_o}%::%loop-value%::type} in upper case
+            set {_reason} to {punishments::%{_o}%::%loop-value%::reason}
+            set {_duration} to formatTimespan({punishments::%{_o}%::%loop-value%::duration})
+            set {_category} to {punishments::%{_o}%::%loop-value%::category} in upper case
+            set {_t} to text component from "{@m}[%{_type}%] {@c}by {@s}%{_issuer}% {@c}for {@s}%{_reason}% &8({@c}%{_duration}%&8)"
+            add hover event showing "{@c}Punishment ID&8: {@s}%loop-value%%nl%{@c}Time&8: {@s}%{_time}%%nl%{@c}Category&8: {@s}%{_category}%" to {_t}
+            send component {_t} to {_p}
+        send "&fHover any punishment for extra info." to {_p}
+    else:
+        send "&fThis player has no punishments." to {_p}
+    send " " to {_p}
+
+function isMuted(o: offlineplayer) :: boolean:
+    set {_l::*} to indices of {punishments::%{_o}%::*} where [{punishments::%{_o}%::%input%::type} = "mute"]
+    remove "counter" from {_l::*}
+    set {_lastPunishmentID} to last element out of {_l::*}
+    return whether time since {punishments::%{_o}%::%{_lastPunishmentID}%::time} < {punishments::%{_o}%::%{_lastPunishmentID}%::duration}
+
+function isBanned(o: offlineplayer) :: boolean:
+    set {_l::*} to indices of {punishments::%{_o}%::*} where [{punishments::%{_o}%::%input%::type} = "ban"]
+    remove "counter" from {_l::*}
+    set {_lastPunishmentID} to last element out of {_l::*}
+    return whether time since {punishments::%{_o}%::%{_lastPunishmentID}%::time} < {punishments::%{_o}%::%{_lastPunishmentID}%::duration}
+
+# Commands
+command /punish <text>:
+    permission: staff
+    usage: &c/punish <player>
+    trigger:
+        set {_?} to offlineplayer(arg-1, false)
+        if {_?} is not set:
+            error(player, "&cThis player does not exist!")
+            stop
+        punishmentGui(player, {_?}, "main")
+
+command /punishmenthistory <text>:
+    permission: staff
+    aliases: history
+    usage: &c/history <player>
+    trigger:
+        set {_?} to offlineplayer(arg-1, false)
+        if {_?} is not set:
+            error(player, "&cThis player does not exist!")
+            stop
+        getPunishmentHistory(player, {_?})
+
+command /viewpunishment <text> <integer>:
+    permission: staff
+    usage: &c/viewpunishment <player> <punishmentID>
+    trigger:
+        set {_?} to offlineplayer(arg-1, false)
+        if {_?} is not set:
+            error(player, "&cThis player does not exist!")
+            stop
+        if {punishments::%{_?}%::%arg-2%} is not set:
+            error(player, "This ID doesn't exist for this player!")
+            stop
+        set {_issuer} to {punishments::%{_?}%::%arg-2%::issuer}
+        set {_time} to {punishments::%{_?}%::%arg-2%::time}
+        set {_type} to {punishments::%{_?}%::%arg-2%::type} in upper case
+        set {_reason} to {punishments::%{_?}%::%arg-2%::reason}
+        set {_duration} to formatTimespan({punishments::%{_?}%::%arg-2%::duration})
+        set {_category} to {punishments::%{_?}%::%arg-2%::category} in upper case
+        send " "
+        send "{@c}Viewing punishment {@s}%arg-2% {@c}of {@m}%arg-1%&8:"
+        send "{@c}Issued by&8: {@s}%{_issuer}%"
+        send "{@c}Time&8: {@s}%{_time}%"
+        send "{@c}Type&8: {@s}%{_type}%"
+        send "{@c}Reason&8: {@s}%{_reason}%"
+        send "{@c}Duration&8: {@s}%{_duration}%"
+        send "{@c}Category&8: {@s}%{_category}%"
+        send " "
+
+command /clearpunishmenthistory <text>:
+    permission: admin
+    usage: &c/clearpunishmenthistory <player>
+    trigger:
+        set {_?} to offlineplayer(arg-1, false)
+        if {_?} is not set:
+            error(player, "&cThis player does not exist!")
+            stop
+        delete {punishments::%{_?}%::*}
+        send "{@c}Punishment history of {@m}%arg-1% {@c}cleared!"
+
+on tab complete of "/viewpunishment":
+    player has permission "staff":
+        set tab completions for position 2 to indices of {punishments::%offlineplayer(tab arg-1, false)%::*} where [input is not "counter"]
+
+on tab complete of "/punish", "/punishmenthistory", "/history", "/viewpunishment", "/clearpunishmenthistory":
+    player has permission "staff":
+        set tab completions for position 1 to all players
+
+on chat:
+    isMuted(player) = true
+    player does not have permission "punishment.bypass"
+    cancel event
+    set {_o} to player
+    set {_l::*} to indices of {punishments::%{_o}%::*} where [{punishments::%{_o}%::%input%::type} = "mute"]
+    remove "counter" from {_l::*}
+    set {_lastPunishmentID} to last element out of {_l::*}
+    set {_duration} to {punishments::%{_o}%::%{_lastPunishmentID}%::duration}
+    set {_time} to {punishments::%{_o}%::%{_lastPunishmentID}%::time}
+    set {_reason} to {punishments::%{_o}%::%{_lastPunishmentID}%::reason}
+    set {_time-left} to "%nl%&6⌚ &7You will be unmuted in &f%formatTimespan(time until ({_duration} from {_time}))%&7. %nl%" if {_duration} is set
+    send "%nl%&4⚠ &cYou have been muted by a staff member for &f%{_reason}%&c. %{_time-left}%"
+
+on connect:
+    isBanned(player) = true
+    player does not have permission "punishment.bypass"
+    set {_o} to player
+    set {_l::*} to indices of {punishments::%{_o}%::*} where [{punishments::%{_o}%::%input%::type} = "ban"]
+    remove "counter" from {_l::*}
+    set {_lastPunishmentID} to last element out of {_l::*}
+    set {_duration} to {punishments::%{_o}%::%{_lastPunishmentID}%::duration}
+    set {_time} to {punishments::%{_o}%::%{_lastPunishmentID}%::time}
+    set {_reason} to {punishments::%{_o}%::%{_lastPunishmentID}%::reason}
+    set {_time-left} to "%nl% &6⌚ &7You will be unbanned in &f%formatTimespan(time until ({_duration} from {_time}))%&7. %nl%" if {_duration} is set
+    kick player due to "%nl%%nl% &4⚠ &cYou have been banned by a staff member. %nl%%nl% <#91a0ff>◇ &7Reason&8: &f%{_reason}% %nl% <#91a0ff>◇ &7Duration&8: &f%{_duration} ? "FOREVER"% %nl% <#91a0ff>◇ &7Date&8: &f%{_time} formatted human-readable as "MM/dd/yy, h:mm a"% %nl%%{_time-left} ? ""%"
