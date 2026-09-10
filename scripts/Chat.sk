@@ -10,8 +10,10 @@
 # - skript-reflect
 # - CJHUtils.sk
 #
+# Tested on Skript 2.16.2 + SkBee 3.25.4 (Paper 1.21.11).
+#
 # author: CJH (https://discord.gg/5Dr4XR5Znj)
-# version: 1.0
+# version: 1.1
 # license: Noncommercial (Do NOT resell or distribute this without permission)
 ###
 
@@ -25,12 +27,12 @@ function getRandomCode() :: string:
 function colorFormat(text: text) :: text:
     return formatted {_text}.replaceAll("&#([a-fA-F0-9]{6})", "<#$1>")
 
-function replaceableItem(item: item, player: player) :: text component:
+function replaceableItem(item: item, player: player) :: textcomp:
     if {_item} is air:
         return text component from "&7[&fAir&7]&r"
     set {_item::amount} to amount of {_item} in {_player}
     if {_item::amount} > 1:
-        set {_itemAmount} to text component from " %last string color code of effectivename of {_item}%&fx%{_item::amount}%"
+        set {_itemAmount} to text component from " &fx%{_item::amount}%"
     set {_component} to merge components "&7[&f", effectivename of {_item}, {_itemAmount}, "&7]&r"
     add a new hover event showing 1 of {_item} to {_component}
     return {_component}
@@ -38,11 +40,11 @@ function replaceableItem(item: item, player: player) :: text component:
 on async chat:
     set {_message} to async chat message
     loop players:
-        {_message} partially matches "(?i)@?(%name of loop-player%|%display name of loop-player%)\b"
-        set {_mention} to text component from "&e@%(display name of loop-player)%&r"
-        component regex replace "(?i)@?(%name of loop-player%|%display name of loop-player%)\b" with {_mention} in {_message}
+        {_message} partially matches "(?i)@?(%name of loop-player%|%uncolored display name of loop-player%)\b"
+        set {_mention} to merge components "&e@", (display name of loop-player), "&r"
+        component regex replace "(?i)@?(%name of loop-player%|%uncolored display name of loop-player%)\b" with {_mention} in {_message}
         play sound "entity.experience_orb.pickup" for loop-player
-    set color format of {_message} to first string color of formatted "<%{playerData::%player%::chatcolor} ? "#AAAAAA"%>"
+    set color format of {_message} to color from hex code ({playerData::%player%::chatcolor} ? "#AAAAAA")
     set {_code} to getRandomCode()
     set {-message::%{_code}%::message} to {_message}
     set {-message::%{_code}%::owner} to player
@@ -53,7 +55,7 @@ on async chat:
         set {_id::*} to "%uncolored {_message}%" parsed as "\(Replying to #%integer%\)%string%"
         set {_message} to text component from {_id::2}
         {-message::%{_id::1}%::message} is set
-        set {_format::1} to text component from "&f➦ &7Replying to &e@%{-message::%{_id::1}%::owner}%&7: %first 7 characters of {-message::%{_id::1}%::message}%...%nl%"
+        set {_format::1} to text component from "&f➦ &7Replying to &e@%{-message::%{_id::1}%::owner}%&7: %first 7 characters of unformatted {-message::%{_id::1}%::message}%...%nl%"
         send action bar "&a%player% replied to you" to {-message::%{_id::1}%::owner}
     set {_format::5} to {_message}
     add a new hover event showing text component from "&fClick to reply to this message!" to {_format::5}
