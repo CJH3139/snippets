@@ -14,6 +14,8 @@ A collection of Skript scripts by CJH (and a few other people). Join [CJH's supp
 
 Every script has a header comment with a description, requirements, and configurable values near the top.
 
+Tested on Skript 2.16.2 / Paper 1.21.11.
+
 ## Scripts
 
 | Script | Description | Requires |
@@ -27,14 +29,14 @@ Every script has a header comment with a description, requirements, and configur
 | [Guilds.sk](scripts/Guilds.sk) | Team/clan system with ranks, invites, team chat, and management commands | SkBee |
 | [LuckpermsAPI.sk](scripts/LuckpermsAPI.sk) | PermSK replacement with custom LuckPerms expressions | skript-reflect, LuckPerms |
 | [Mining.sk](scripts/Mining.sk) | Custom mining with ore health and regeneration | SkBee, skript-reflect, oopsk |
-| [Punishments.sk](scripts/Punishments.sk) | GUI punishment system with warns, mutes, bans, and automatic escalation | SkBee, skript-gui |
+| [Punishments.sk](scripts/Punishments.sk) | GUI punishment system with warns, mutes, bans, and automatic escalation | SkBee, skript-gui, Lusk 1.3.14+ |
 | [Scoreboard.sk](scripts/Scoreboard.sk) | Customizable scoreboard with per-player settings GUI | SkBee, skript-gui, skript-placeholder |
 | [Shop.sk](scripts/Shop.sk) | SMP/Lifesteal style shop with 100+ configurable items | SkBee, skript-gui, skript-reflect, oopsk |
 | [Signatures.sk](scripts/Signatures.sk) | Sign items with a custom signature | SkBee |
 | [StaffChat.sk](scripts/StaffChat.sk) | Staff chat with `/sc` and toggle (by Fusezion) | SkBee |
 | [Trash.sk](scripts/Trash.sk) | `/trash` GUI for deleting items | SkBee, skript-gui |
 | [chucknorris.sk](scripts/chucknorris.sk) | Chuck Norris jokes from an API, with sign support | skript-reflect |
-| [_AtlasSprites.sk](scripts/_AtlasSprites.sk) | Send atlas sprites (item, GUI, painting icons) as chat components | SkBee, skript-reflect (Skript 2.14.3 or lower) |
+| [_AtlasSprites.sk](scripts/_AtlasSprites.sk) | Send atlas sprites (item, GUI, painting icons) as chat components | SkBee, skript-reflect, MC 1.21.9+ |
 | [_LibsDisguisesAPI.sk](scripts/_LibsDisguisesAPI.sk) | Functions for the LibsDisguises API (disguise, undisguise, check) (by wrexbg) | skript-reflect, LibsDisguises |
 
 ## Support

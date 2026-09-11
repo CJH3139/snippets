@@ -9,6 +9,7 @@
 # - Skript
 # - SkBee
 # - skript-gui
+# - Lusk (1.3.14+, for the anvil GUIs - older builds fail to load on Skript 2.16)
 # - CJHUtils.sk
 #
 # author: CJH (https://discord.gg/5Dr4XR5Znj)

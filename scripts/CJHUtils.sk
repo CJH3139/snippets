@@ -25,6 +25,7 @@ item property effectivename:
 on load:
     # Change this to your server prefix
     set {-constants::prefix} to "&6&lCJH &r|"
+    set {-close} to barrier named "&cClose"
 
 
 # <summary>

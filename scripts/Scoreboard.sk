@@ -12,7 +12,7 @@
 # - CJHUtils.sk
 #
 # author: CJH (https://discord.gg/5Dr4XR5Znj)
-# version: 1.0
+# version: 1.1
 # license: Noncommercial (Do NOT resell or distribute this without permission)
 ###
 
@@ -35,45 +35,71 @@ on load:
     set {-scoreboard::server::1} to " &d⌚ <#E7E7E7>Map Reset: &d[[sk_MapReset]]"
     set {-scoreboard::server::2} to " <#077FFF>👤 <#E7E7E7>Joins: <#077FFF>[[server_unique_joins]]"
 
-local function checkNext(player: player) :: integer:
-    loop 15 times:
-        if line (loop-iteration) of {_player}'s board is set:
-            continue
-        return loop-value
-
 local function getLine(player: player, id: string) :: integer:
     return {playerData::%{_player}%::scoreboard::line::%{_id}%}
 
-function updateFullBoard(player: player):
-    clear fastboard of {_player}
-    set title of {_player}'s board to {-scoreboard::default::0}
-    set line 1 of {_player}'s board to {-scoreboard::default::1}
+# Handling custom resolvers
+local function renderLine(p: player, template: text) :: text:
+    if {_template} doesn't contain "[[":
+        return {_template}
+    set {_parts::*} to {_template} split at "[["
+    set {_out} to {_parts::1}
+    loop {_parts::*}:
+        if loop-iteration is 1:
+            continue
+        set {_bits::*} to loop-value split at "]]"
+        set {_value} to formatted (the placeholder {_bits::1} of {_p})
+        if {_value} is not set:
+            set {_value} to "[[%{_bits::1}%]]"
+        set {_tail} to {_bits::2} ? ""
+        set {_out} to "%{_out}%%{_value}%%{_tail}%"
+    return {_out}
+
+local function buildLayout(player: player):
+    delete {-scoreboard::layout::%{_player}%::*}
+    delete {playerData::%{_player}%::scoreboard::line::*}
+    add {-scoreboard::default::1} to {-scoreboard::layout::%{_player}%::*}
     if any of {playerData::%{_player}%::scoreboard::stats::*} is true:
-        set line checkNext({_player}) of {_player}'s board to ""
+        add "" to {-scoreboard::layout::%{_player}%::*}
     loop {-scoreboard::stats::*}:
-        set {_idx} to loop-iteration
-        set {_idIndex} to {_idx} + 1
-        set {_id} to {-scoreboard::id::%{_idIndex}%}
-        if {playerData::%{_player}%::scoreboard::stats::%{_idx}%} is true:
-            set line checkNext({_player}) of {_player}'s board to loop-value
-            set {playerData::%{_player}%::scoreboard::line::%{_id}%} to checkNext({_player})-1
+        if {playerData::%{_player}%::scoreboard::stats::%loop-iteration%} is true:
+            add loop-value to {-scoreboard::layout::%{_player}%::*}
+            set {_idIndex} to loop-iteration + 1
+            set {playerData::%{_player}%::scoreboard::line::%{-scoreboard::id::%{_idIndex}%}%} to size of {-scoreboard::layout::%{_player}%::*}
     if any of {playerData::%{_player}%::scoreboard::server::*} is true:
-        set line checkNext({_player}) of {_player}'s board to ""
+        add "" to {-scoreboard::layout::%{_player}%::*}
     loop {-scoreboard::server::*}:
-        set {_idx} to loop-iteration
-        set {_idIndex} to {_idx} + 6
-        set {_id} to {-scoreboard::id::%{_idIndex}%}
-        if {playerData::%{_player}%::scoreboard::server::%{_idx}%} is true:
-            set line checkNext({_player}) of {_player}'s board to loop-value
-            set {playerData::%{_player}%::scoreboard::line::%{_id}%} to checkNext({_player})-1
-    set line checkNext({_player}) of {_player}'s board to ""
-    set line checkNext({_player}) of {_player}'s board to {-scoreboard::default::2}
-    # Handling custom resolvers
-    loop 15 times:
-        if line loop-iteration of {_player}'s board is set:
-            set {_text::*} to (line loop-iteration of {_player}'s board) split at "["
-            set {_text::*} to {_text::3} split at "]"
-            replace all ("[[" + {_text::1} + "]]") with formatted (the placeholder {_text::1} of {_player}) in (line loop-iteration of {_player}'s board)
+        if {playerData::%{_player}%::scoreboard::server::%loop-iteration%} is true:
+            add loop-value to {-scoreboard::layout::%{_player}%::*}
+            set {_idIndex} to loop-iteration + 6
+            set {playerData::%{_player}%::scoreboard::line::%{-scoreboard::id::%{_idIndex}%}%} to size of {-scoreboard::layout::%{_player}%::*}
+    add "" to {-scoreboard::layout::%{_player}%::*}
+    add {-scoreboard::default::2} to {-scoreboard::layout::%{_player}%::*}
+
+function refreshBoard(player: player):
+    {_player} is online
+    if {-scoreboard::layout::%{_player}%::*} is not set:
+        buildLayout({_player})
+    if {-scoreboard::shown::%{_player}%::title} is not {-scoreboard::default::0}:
+        set title of {_player}'s fastboard to {-scoreboard::default::0}
+        set {-scoreboard::shown::%{_player}%::title} to {-scoreboard::default::0}
+    loop {-scoreboard::layout::%{_player}%::*}:
+        set {_n} to loop-iteration
+        set {_line} to renderLine({_player}, loop-value)
+        if {-scoreboard::shown::%{_player}%::line::%{_n}%} is not {_line}:
+            set line {_n} of {_player}'s fastboard to {_line}
+            set {-scoreboard::shown::%{_player}%::line::%{_n}%} to {_line}
+    set {_count} to size of {-scoreboard::layout::%{_player}%::*}
+    set {_previous} to {-scoreboard::shown::%{_player}%::count} ? 0
+    if {_previous} > {_count}:
+        loop integers between ({_count} + 1) and {_previous}:
+            delete line loop-value of {_player}'s fastboard
+            delete {-scoreboard::shown::%{_player}%::line::%loop-value%}
+    set {-scoreboard::shown::%{_player}%::count} to {_count}
+
+function updateFullBoard(player: player):
+    buildLayout({_player})
+    refreshBoard({_player})
 
 function scoreboardGUI(p: player):
     create a gui with virtual chest inventory with 6 rows named "&8ℹ Scoreboard Settings":
@@ -127,10 +153,10 @@ function scoreboardGUI(p: player):
         format gui slot 49 with {-close}:
             close {_p}'s inventory
         format gui slot 48 with emerald named "&aEnable All" with lore "&e➥ Click to enable all stats":
-            loop 5 times:
-                set {playerData::%{_p}%::scoreboard::stats::%loop-number%} to true
-            loop 2 times:
-                set {playerData::%{_p}%::scoreboard::server::%loop-number%} to true
+            loop {-scoreboard::stats::*}:
+                set {playerData::%{_p}%::scoreboard::stats::%loop-iteration%} to true
+            loop {-scoreboard::server::*}:
+                set {playerData::%{_p}%::scoreboard::server::%loop-iteration%} to true
             send "%{-constants::prefix}% &7Enabled all scoreboard stats" to {_p}
             play sound "minecraft:ui.button.click" to {_p}
             set metadata "scoreboard;changed" of player to now
@@ -149,12 +175,18 @@ function scoreboardGUI(p: player):
 
 every second:
     loop players:
-        updateFullBoard(loop-value)
+        refreshBoard(loop-value)
 
 # Joins board
 on first join:
-    set {playerData::%player%::scoreboard::server::*} to true
-    set {playerData::%player%::scoreboard::stats::*} to true
+    loop {-scoreboard::stats::*}:
+        set {playerData::%player%::scoreboard::stats::%loop-iteration%} to true
+    loop {-scoreboard::server::*}:
+        set {playerData::%player%::scoreboard::server::%loop-iteration%} to true
+
+on quit:
+    delete {-scoreboard::layout::%player%::*}
+    delete {-scoreboard::shown::%player%::*}
 
 command /scoreboard:
     aliases: sc, scoreboards

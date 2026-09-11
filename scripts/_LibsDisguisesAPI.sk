@@ -76,7 +76,7 @@ function disguiseEntity(entity: entity, disguiseSource: object, recipients: play
     else if {_disguiseSource} is an entity type:
         disguiseEntityType({_entity}, {_disguiseSource}, {_recipients::*})
     else if {_disguiseSource} is an entity:
-        disguiseEntity({_entity}, {_disguiseSource}, {_recipients::*})
+        disguiseFromEntity({_entity}, {_disguiseSource}, {_recipients::*})
 
 # <summary>
 # Undisguise an entity
@@ -93,7 +93,7 @@ local function disguiseCustom(entity: entity, disguiseName: string, recipients: 
     disguise({_entity}, {_disguise}, {_recipients::*})
 
 # local helper function to handle disguising with source entity
-local function disguiseEntity(entity: entity, disguiseSource: entity, recipients: players = {_null}):
+local function disguiseFromEntity(entity: entity, disguiseSource: entity, recipients: players = {_null}):
     set {_disguise} to DisguiseAPI.constructDisguise({_disguiseSource})
     {_disguise} is set
 

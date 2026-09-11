@@ -97,17 +97,17 @@ command /pvp:
     executable by: players
     trigger:
         if metadata "pvp;timer" of player is set:
-            send component merge components {-constants::prefix} and ("<#ff0000>You can not toggle pvp while in combat.") with " " to player
+            send component merge components {-constants::prefix} and (formatted "<#ff0000>You can not toggle pvp while in combat.") with " " to player
             cancel cooldown
             stop
         if metadata "pvp;disabled" of player is set:
             clear metadata "pvp;disabled" of player
-            send component merge components {-constants::prefix} and ("You've <lime>enabled<reset> pvp.") with " "
+            send component merge components {-constants::prefix} and (formatted "You've <lime>enabled<reset> pvp.") with " "
 
         else:
             set metadata "pvp;disabled" of player to true
             cancel cooldown
-            send component merge components {-constants::prefix} and ("You've <light red>disabled<reset> pvp.") with " "
+            send component merge components {-constants::prefix} and (formatted "You've <light red>disabled<reset> pvp.") with " "
 
 on command:
     metadata "pvp;timer" of player is set

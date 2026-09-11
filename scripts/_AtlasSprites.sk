@@ -4,9 +4,10 @@
 # Send atlas sprites (items, blocks, GUI icons, effects, particles, paintings) as chat components.
 #
 # Requires:
-# - Skript (Version 2.14.3 or lower)
+# - Skript (tested on 2.16.2)
 # - skript-reflect
 # - SkBee
+# - Minecraft 1.21.9+ (atlas sprites are a client-side feature)
 #
 # author: CJH (https://discord.gg/5Dr4XR5Znj)
 # version: 1.0
